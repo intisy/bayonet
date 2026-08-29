@@ -11,7 +11,7 @@ A plugin is a `plugin.json` and an entry module. Nothing else is required, and
 
 ```json
 {
-  "$schema": "https://intisy-ai.github.io/api/schema/plugin.schema.json",
+  "$schema": "./node_modules/@intisy/bayonet/schema/plugin.schema.json",
   "id": "wakatime-sync",
   "api": 1,
   "entry": "dist/index.js",
@@ -33,7 +33,7 @@ the one it was built against: a host loads anything whose floor it meets.
 
 ```ts
 import type { Plugin, PluginContext } from "@intisy/bayonet";
-import { SETTINGS } from "@intisy-ai/core";
+import { SETTINGS } from "@intisy-ai/basekit";
 
 const plugin: Plugin = {
   async activate(ctx: PluginContext) {
@@ -52,7 +52,7 @@ Everything a plugin may touch arrives on `ctx`: its manifest, its config, its lo
 paths and the host descriptor. `provide` takes a typed key rather than a string, so the
 implementation is checked against the capability it claims to be. The keys are minted by the
 library that owns each category, never by this package, which is why `SETTINGS` is imported from
-`core` rather than from here.
+`basekit` rather than from here.
 
 ## 3. Check it before a host does
 
