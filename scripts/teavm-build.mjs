@@ -11,7 +11,7 @@
 //      STABLE path instead of reaching into a Gradle build/ directory directly.
 //
 // Usage (run from the consuming package's own directory):
-//   node node_modules/@intisy-ai/api/scripts/teavm-build.mjs \
+//   node node_modules/@intisy/bayonet/scripts/teavm-build.mjs \
 //     --java-dir . --module :my-teavm --out src/generated/my-module.teavm.js
 //
 // Optional flags:

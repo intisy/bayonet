@@ -11,7 +11,7 @@ const tsc = join(repo, "node_modules", "typescript", "bin", "tsc");
 /**
  * @remarks
  * The keys file is the only generated file that is committed both as TypeScript and as its compiled
- * output, because it is the package root: `generated/api.keys.js` is what `import "@intisy-ai/api"`
+ * output, because it is the package root: `generated/api.keys.js` is what `import "@intisy/bayonet"`
  * loads and `generated/api.keys.d.ts` is what types it. Committing a stale pair would serve a root
  * that disagrees with the Java, which no other gate here can see.
  */

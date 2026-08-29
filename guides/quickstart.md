@@ -5,7 +5,7 @@ title: Quickstart
 # Writing a plugin
 
 A plugin is a `plugin.json` and an entry module. Nothing else is required, and
-`@intisy-ai/api` is the only import a minimal plugin needs.
+`@intisy/bayonet` is the only import a minimal plugin needs.
 
 ## 1. Declare it
 
@@ -32,7 +32,7 @@ the one it was built against: a host loads anything whose floor it meets.
 ## 2. Write the entry
 
 ```ts
-import type { Plugin, PluginContext } from "@intisy-ai/api";
+import type { Plugin, PluginContext } from "@intisy/bayonet";
 import { SETTINGS } from "@intisy-ai/core";
 
 const plugin: Plugin = {

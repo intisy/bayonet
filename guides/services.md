@@ -33,7 +33,7 @@ implementation, which is legitimate when that is genuinely what you want.
 Extend `ServiceMap` by declaration merging, and both sides get types with no import cycle:
 
 ```ts
-declare module "@intisy-ai/api" {
+declare module "@intisy/bayonet" {
   interface ServiceMap {
     "config-ledger:history": ConfigHistoryCapability;
   }
