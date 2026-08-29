@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/plugin.schema.json",
-  "id": "api",
+  "id": "bayonet",
   "api": 1,
   "displayName": "Plugin API",
   "publish": {
@@ -15,7 +15,7 @@
     ]
   },
   "repo": {
-    "role": "Plugin API contract and service registry",
+    "role": "Plugin contract, host driver and engine, with no dependencies of its own",
     "category": "core-library",
     "tech": [
       "typescript",

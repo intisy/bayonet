@@ -2,7 +2,7 @@ plugins {
     id "org.gradle.toolchains.foojay-resolver-convention" version "0.8.0"
 }
 
-rootProject.name = "api-java"
+rootProject.name = "bayonet-java"
 
 // :annotations - the emission annotations. JDK 1.8, because :contract reads them at release 8.
 // :processor   - the emitter. JDK 17, because javax.lang.model.SourceVersion.RELEASE_17 needs it.

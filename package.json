@@ -1,7 +1,7 @@
 {
-  "name": "api",
+  "name": "bayonet",
   "version": "1.7.0",
-  "description": "Plugin API contract and service registry for the intisy-ai AI-proxy ecosystem.",
+  "description": "Plugin contract, host driver and engine, with no dependencies of its own.",
   "type": "module",
   "main": "generated/api.keys.js",
   "types": "generated/api.keys.d.ts",
@@ -37,10 +37,9 @@
   "author": "intisy",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/intisy-ai/api.git"
+    "url": "git+https://github.com/intisy/bayonet.git"
   },
   "keywords": [
-    "intisy-ai",
     "plugin",
     "api",
     "registry",

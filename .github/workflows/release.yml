@@ -54,8 +54,8 @@ jobs:
       tag: ${{ inputs.tag }}
       patch_ceiling: 20
       require_clean_readme: false
-      unscoped_name: 'api'
-      scope: 'intisy-ai'
+      unscoped_name: 'bayonet'
+      scope: 'intisy'
       scoped_only: true
       pin_file_deps: true
       readme_from_default_branch: true

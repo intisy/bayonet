@@ -5,7 +5,7 @@
     "generated/engine.d.ts"
   ],
   "out": "site",
-  "name": "@intisy-ai/api",
+  "name": "@intisy/bayonet",
   "projectDocuments": [
     "guides/quickstart.md",
     "guides/capabilities.md",
@@ -19,7 +19,7 @@
     "invalidLink": true,
     "notDocumented": true
   },
-  "sourceLinkTemplate": "https://github.com/intisy-ai/api/blob/{gitRevision}/{path}#L{line}",
+  "sourceLinkTemplate": "https://github.com/intisy/bayonet/blob/{gitRevision}/{path}#L{line}",
   "ignoredHighlightLanguages": [
     "mermaid"
   ],
