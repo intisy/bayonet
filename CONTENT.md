@@ -1,4 +1,4 @@
-The plugin contract for the intisy-ai ecosystem, published as `@intisy-ai/api`. It holds the
+The plugin contract, published as `@intisy/bayonet`. It holds the
 `plugin.json` manifest schema, the plugin context and lifecycle, the typed keys a capability or a
 service is reached by, the declaration engine a host runs, the ESM driver a host starts plugins with,
 and the `validate` command. The contract is written in Java and the TypeScript surface is generated
@@ -72,7 +72,7 @@ they are enforced in review:
 Through the plugin manager, as a dependency of the host or plugin that needs it:
 
 ```bash
-npm install @intisy-ai/api
+npm install @intisy/bayonet
 ```
 
 ## Configuration
@@ -108,7 +108,7 @@ the staged output is empty.
 
 Usage, from the consuming package's own directory:
 ```bash
-node node_modules/@intisy-ai/api/scripts/teavm-build.mjs --java-dir . --module :stub-teavm --out src/generated/stub-provider.teavm.js
+node node_modules/@intisy/bayonet/scripts/teavm-build.mjs --java-dir . --module :stub-teavm --out src/generated/stub-provider.teavm.js
 ```
 Flags: `--java-dir` / `--module` / `--out` (all required), `--task` (default `generateJavaScript`),
 `--module-dir` (default `--module` minus its leading `:`), `--skip-build` (re-copy the
