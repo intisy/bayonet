@@ -19,7 +19,7 @@ import java.util.Map;
 public final class ManifestSchema {
 
     /** Canonical URL a manifest points $schema at, served by the docs site. */
-    public static final String SCHEMA_ID = "https://intisy-ai.github.io/api/schema/plugin.schema.json";
+    public static final String SCHEMA_ID = "https://intisy.github.io/bayonet/schema/plugin.schema.json";
 
     /** Draft the published schema declares, which no validator in this package reads. */
     public static final String DRAFT = "http://json-schema.org/draft-07/schema#";

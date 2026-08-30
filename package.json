@@ -1,6 +1,6 @@
 {
   "name": "bayonet",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "Plugin contract, host driver and engine, with no dependencies of its own.",
   "type": "module",
   "main": "generated/api.keys.js",

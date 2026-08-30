@@ -35,10 +35,11 @@ import javax.tools.Diagnostic;
 import javax.tools.StandardLocation;
 
 /**
- * An annotation processor that renders {@link TsInterface}, {@link TsEnum}, {@link TsModule} and
- * {@link TsConstant} declarations into a single generated TypeScript source file.
+ * An annotation processor that renders {@link TsInterface}, {@link TsFn}, {@link TsEnum},
+ * {@link TsModule} and {@link TsConstant} declarations into a single generated TypeScript source
+ * file.
  */
-@SupportedAnnotationTypes({"io.github.intisy.ai.tsemit.TsInterface", "io.github.intisy.ai.tsemit.TsModule", "io.github.intisy.ai.tsemit.TsConstant", "io.github.intisy.ai.tsemit.TsEnum", "io.github.intisy.ai.tsemit.TsStringUnion", "io.github.intisy.ai.tsemit.TsUnionType"})
+@SupportedAnnotationTypes({"io.github.intisy.ai.tsemit.TsInterface", "io.github.intisy.ai.tsemit.TsFn", "io.github.intisy.ai.tsemit.TsModule", "io.github.intisy.ai.tsemit.TsConstant", "io.github.intisy.ai.tsemit.TsEnum", "io.github.intisy.ai.tsemit.TsStringUnion", "io.github.intisy.ai.tsemit.TsUnionType"})
 @SupportedSourceVersion(SourceVersion.RELEASE_17)
 @SupportedOptions({"tsemit.name", "tsemit.ext", "tsemit.keys", "tsemit.imports", "tsemit.reexport"})
 public class TsEmitProcessor extends AbstractProcessor {
@@ -64,6 +65,23 @@ public class TsEmitProcessor extends AbstractProcessor {
             }
             emittedTypes.add(element.getSimpleName().toString());
             chunks.add(emit((TypeElement) element));
+        }
+        for (Element element : round.getElementsAnnotatedWith(TsFn.class)) {
+            if (element.getKind() != ElementKind.INTERFACE) {
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
+                        "@TsFn applies only to interfaces", element);
+                continue;
+            }
+            TypeElement type = (TypeElement) element;
+            List<ExecutableElement> abstractMethods = abstractMethods(type);
+            if (abstractMethods.size() != 1) {
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
+                        "@TsFn needs exactly one abstract method, because a function type has one call signature",
+                        element);
+                continue;
+            }
+            emittedTypes.add(type.getSimpleName().toString());
+            chunks.add(emitFn(type, abstractMethods.get(0)));
         }
         for (Element element : round.getElementsAnnotatedWith(TsEnum.class)) {
             if (element.getKind() != ElementKind.ENUM) {
@@ -133,6 +151,47 @@ public class TsEmitProcessor extends AbstractProcessor {
             write();
         }
         return false;
+    }
+
+    /**
+     * Renders one function type: the interface's own doc block, then its single call signature.
+     *
+     * @implNote The parameter and return rendering is the same {@link #params} and
+     * {@link #returnType} every member goes through, so an annotation on either behaves here exactly
+     * as it does on a method of a {@link TsInterface}.
+     *
+     * @param type the annotated interface.
+     * @param call its one abstract method.
+     * @return the emitted type alias.
+     */
+    private String emitFn(TypeElement type, ExecutableElement call) {
+        return docBlock(type, "")
+                + "export type " + type.getSimpleName() + joinVars(type.getTypeParameters())
+                + " = (" + params(call) + ") => " + returnType(call) + ";\n";
+    }
+
+    /**
+     * The methods an interface leaves for an implementation to write.
+     *
+     * @implNote Only its OWN members, like every other walk here, and a default or static method is
+     * not part of the call signature a function type carries.
+     *
+     * @param type the interface to walk.
+     * @return its abstract methods, in declaration order.
+     */
+    private List<ExecutableElement> abstractMethods(TypeElement type) {
+        List<ExecutableElement> methods = new ArrayList<ExecutableElement>();
+        for (Element member : type.getEnclosedElements()) {
+            if (member.getKind() != ElementKind.METHOD) {
+                continue;
+            }
+            Set<Modifier> modifiers = member.getModifiers();
+            if (modifiers.contains(Modifier.DEFAULT) || modifiers.contains(Modifier.STATIC)) {
+                continue;
+            }
+            methods.add((ExecutableElement) member);
+        }
+        return methods;
     }
 
     private String emit(TypeElement type) {

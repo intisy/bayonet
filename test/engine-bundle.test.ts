@@ -397,7 +397,7 @@ it("serves the published manifest schema the generator writes", () => {
     required: string[];
     properties: Record<string, unknown>;
   };
-  expect(schema.$id).toBe("https://intisy-ai.github.io/api/schema/plugin.schema.json");
+  expect(schema.$id).toBe("https://intisy.github.io/bayonet/schema/plugin.schema.json");
   expect(schema.$schema).toBe("http://json-schema.org/draft-07/schema#");
   expect(schema.required).toEqual(["id", "api"]);
   expect(Object.keys(schema.properties)).toContain("capabilities");
