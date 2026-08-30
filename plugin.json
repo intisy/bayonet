@@ -9,6 +9,7 @@
       "annotations",
       "processor",
       "contract",
+      "engine",
       "seam",
       "js-base",
       "jvm-seam"

@@ -73,11 +73,15 @@ subprojects {
 }
 
 // The modules a downstream Java repo resolves, mapped to the classifier its coordinate names.
-// :engine and :teavm are absent deliberately: they feed api's npm package, not any Java consumer.
+// :teavm is absent deliberately: it feeds this library's npm package, not any Java consumer.
+// :engine was absent for the same reason until ai-java became a JVM host of the plugin model, which
+// is what it exists to run. It needs nothing beside it: its only dependencies are the annotations
+// and the processor, both SOURCE-retention, so the classifier jar stands alone.
 ext.PUBLISHED_MODULES = [
     ":annotations": "annotations",
     ":processor"  : "processor",
     ":contract"   : "contract",
+    ":engine"     : "engine",
     ":seam"       : "seam",
     ":js-base"    : "js-base",
     ":jvm-seam"   : "jvm-seam",

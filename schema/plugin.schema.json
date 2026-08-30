@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://intisy-ai.github.io/api/schema/plugin.schema.json",
+  "$id": "https://intisy.github.io/bayonet/schema/plugin.schema.json",
   "title": "intisy-ai plugin manifest",
   "description": "The single machine-readable description of a repo in the intisy-ai ecosystem.",
   "type": "object",
