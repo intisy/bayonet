@@ -76,10 +76,10 @@ public final class ManifestSchema {
         properties.put("marketplace", marketplace());
         properties.put("app", app());
 
-        JsonSchema root = described(JsonSchema.ofType("object"), "The single machine-readable description of a repo in the intisy-ai ecosystem.");
+        JsonSchema root = described(JsonSchema.ofType("object"), "The single machine-readable description of a repo in the forebay ecosystem.");
         root.setSchemaDraft(DRAFT);
         root.setSchemaId(SCHEMA_ID);
-        root.setTitle("intisy-ai plugin manifest");
+        root.setTitle("forebay plugin manifest");
         root.setRequired(Arrays.asList("id", "api"));
         root.setProperties(properties);
         return root;
@@ -173,7 +173,7 @@ public final class ManifestSchema {
     private static JsonSchema repo() {
         Map<String, JsonSchema> properties = new LinkedHashMap<String, JsonSchema>();
         properties.put("role", described(JsonSchema.ofType("string"),
-                "The role phrase, capitalized, without the fixed \"for the intisy-ai AI-proxy ecosystem.\" suffix."));
+                "The role phrase, capitalized, without the fixed \"for the forebay AI-proxy ecosystem.\" suffix."));
         properties.put("category", described(JsonSchema.ofType("string"),
                 "The single category topic, for example core-library or ai-provider."));
         JsonSchema domains = described(JsonSchema.ofType("array"), "Domain topics, for example claude or gemini.");

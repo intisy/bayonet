@@ -1,5 +1,5 @@
 kind: generic
-description: Plugin API contract and service registry for the intisy-ai AI-proxy ecosystem.
+description: Plugin API contract and service registry for the forebay AI-proxy ecosystem.
 badges:
   - npm-version
   - npm-downloads
