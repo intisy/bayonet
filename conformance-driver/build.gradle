@@ -10,6 +10,10 @@ dependencies {
 jar {
     manifest { attributes "Main-Class": "io.github.intisy.ai.conformance.BayonetDriver" }
     archiveFileName = "conformance-driver.jar"
+    // Without this the task can run before the jars it unpacks exist: a `from` closure resolving a
+    // configuration declares no dependency on what produces it, and locally it passes because the
+    // producer happened to have run already.
+    dependsOn configurations.runtimeClasspath
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
     exclude "META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA", "META-INF/MANIFEST.MF"
