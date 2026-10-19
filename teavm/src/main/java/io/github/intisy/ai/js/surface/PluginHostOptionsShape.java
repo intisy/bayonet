@@ -8,11 +8,20 @@ import java.util.List;
 @TsInterface(data = true)
 public interface PluginHostOptionsShape {
     /**
-     * The app id plugins see on the host descriptor.
+     * The app id plugins see on the host descriptor, for a host that hosts exactly one.
      *
-     * @return the app id
+     * @return the app id, or absent when {@link #applications()} names them instead
      */
+    @TsOptional
     String app();
+
+    /**
+     * The apps this host hosts, for a composite hosting more than one.
+     *
+     * @return the app ids this host hosts, or absent to fall back to {@link #app()}
+     */
+    @TsOptional
+    List<String> applications();
 
     /**
      * The API major version to claim. Defaults to this package's own.

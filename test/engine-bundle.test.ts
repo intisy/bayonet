@@ -116,6 +116,27 @@ it("refuses a plugin whose api floor is above the host, as a marked error", () =
   expect(error?.detail).toBe("needs api 3, this host has api 2");
 });
 
+it("refuses a plugin built for another application, through the bundle", () => {
+  const host = createPluginHost({ app: "claude", api: 2 });
+  const error = host.supports({ id: "studio-thing", api: 1, targets: ["studio"] });
+  expect(isPluginError(error)).toBe(true);
+  expect(error?.detail).toBe("is built for studio, and this host hosts claude");
+});
+
+it("accepts a plugin that targets nothing, through the bundle", () => {
+  const host = createPluginHost({ app: "claude", api: 2 });
+  expect(host.supports({ id: "old-thing", api: 1 })).toBeNull();
+});
+
+it("hosts every application a composite declares, through the bundle", () => {
+  const host = createPluginHost({ applications: ["claude", "studio"], api: 2 });
+  expect(host.supports({ id: "studio-thing", api: 1, targets: ["studio"] })).toBeNull();
+  expect(host.supports({ id: "claude-thing", api: 1, targets: ["claude"] })).toBeNull();
+  expect(host.supports({ id: "kernel-thing", api: 1, targets: ["kernel"] })?.detail).toBe(
+    "is built for kernel, and this host hosts claude, studio",
+  );
+});
+
 it("stops a quarantined plugin's subscriptions and drops its capabilities", () => {
   const host = createPluginHost({ app: "claude", api: 1 });
   const shared = runtime();

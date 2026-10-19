@@ -442,8 +442,10 @@ export interface PluginPathsShape {
 export interface PluginHostOptionsShape {
   /** The API major version to claim. Defaults to this package's own. */
   api?: number;
-  /** The app id plugins see on the host descriptor. */
-  app: string;
+  /** The app id plugins see on the host descriptor, for a host that hosts exactly one. */
+  app?: string;
+  /** The apps this host hosts, for a composite hosting more than one. */
+  applications?: string[];
   /** Surface ids this host renders. */
   surfaces?: string[];
   /** Capability ids this host understands. Absent means unverifiable, not empty. */

@@ -81,15 +81,31 @@ final class JsPluginHost implements JSObject {
 
     /** Reads the options tree {@code EngineJs.createPluginHost} already converted, and builds the host. */
     static JsPluginHost from(Object tree) {
-        String app = text(tree, "app");
         int api = intOr(tree, "api", Api.API_VERSION);
         List<String> surfaces = strings(member(tree, "surfaces"));
         List<String> vocabulary = strings(member(tree, "vocabulary"));
         List<String> wellKnownServices = strings(member(tree, "wellKnownServices"));
-        PluginHost host = new PluginHost(app, api, surfaces, new JsScheduler());
+        PluginHost host = new PluginHost(applicationsOf(tree), api, surfaces, new JsScheduler());
         host.knownCapabilities(vocabulary);
         host.wellKnownServices(wellKnownServices);
         return build(host);
+    }
+
+    /**
+     * @implNote {@code applications} is read first and the scalar {@code app} is the fallback, so
+     * every caller written before a host could host more than one keeps working unchanged.
+     */
+    private static List<String> applicationsOf(Object tree) {
+        List<String> applications = strings(member(tree, "applications"));
+        if (!applications.isEmpty()) {
+            return applications;
+        }
+        String app = text(tree, "app");
+        List<String> single = new ArrayList<String>();
+        if (app != null) {
+            single.add(app);
+        }
+        return single;
     }
 
     static JsPluginHost build(final PluginHost host) {
@@ -99,7 +115,7 @@ final class JsPluginHost implements JSObject {
             @Override
             public JSObject call(JSObject manifest) {
                 ManifestFacts facts = factsOf(manifest);
-                PluginException failure = host.supports(facts.getId(), facts.getApi());
+                PluginException failure = host.supports(facts);
                 return failure == null ? null : JsErrors.of(failure);
             }
         };
@@ -223,7 +239,8 @@ final class JsPluginHost implements JSObject {
         int api = intOr(tree, "api", 0);
         List<String> capabilities = strings(member(tree, "capabilities"));
         List<String> permissions = strings(member(tree, "permissions"));
-        return new ManifestFacts(id, api, capabilities, permissions, manifestObj);
+        List<String> targets = strings(member(tree, "targets"));
+        return new ManifestFacts(id, api, capabilities, permissions, targets, manifestObj);
     }
 
     private static PluginException errorOf(String pluginId, JSObject error) {
