@@ -5,6 +5,8 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import io.github.intisy.ai.engine.Activation;
 import io.github.intisy.ai.engine.ActivationPlan;
+import io.github.intisy.ai.engine.ActivationUnit;
+import io.github.intisy.ai.engine.DeclarationKind;
 import io.github.intisy.ai.engine.ManifestFacts;
 import io.github.intisy.ai.engine.ManifestValidator;
 import io.github.intisy.ai.engine.PluginException;
@@ -96,10 +98,7 @@ public final class BayonetDriver {
             return revoke(given);
         }
         if ("boot".equals(op)) {
-            return unwitnessed("Activation.order takes ids, provides and consumes and no per"
-                + " requirement policy at all, so optional and degradable are not parameters this"
-                + " engine has: a consumed service nobody provides simply draws no edge and the"
-                + " consumer activates anyway");
+            return boot(given);
         }
         if ("resolve".equals(op)) {
             return unwitnessed("this engine has no constraints, no attributes and no budget: a"
@@ -107,6 +106,34 @@ public final class BayonetDriver {
                 + " degrade");
         }
         throw new IllegalArgumentException("unknown op '" + op + "'");
+    }
+
+    /**
+     * @implNote A boot vector's units carry no kind, so every declaration is read as a service,
+     * which is the only edge a plugin host draws anyway. The refusals the plan carries ARE the
+     * answer: this driver decides nothing about them.
+     */
+    private static Map<String, Object> boot(Map<String, Object> given) {
+        List<ActivationUnit> units = new ArrayList<ActivationUnit>();
+        for (Object entry : list(given.get("units"))) {
+            Map<String, Object> unit = map(entry);
+            List<ActivationUnit.Offer> offers = new ArrayList<ActivationUnit.Offer>();
+            for (String id : strings(unit.get("provides"))) {
+                offers.add(new ActivationUnit.Offer(DeclarationKind.SERVICE, id));
+            }
+            List<ActivationUnit.Need> needs = new ArrayList<ActivationUnit.Need>();
+            for (Object required : list(unit.get("requires"))) {
+                Map<String, Object> need = map(required);
+                needs.add(new ActivationUnit.Need(DeclarationKind.SERVICE, String.valueOf(need.get("id")),
+                    Boolean.TRUE.equals(need.get("optional")), Boolean.TRUE.equals(need.get("degradable"))));
+            }
+            units.add(new ActivationUnit(String.valueOf(unit.get("id")), offers, needs));
+        }
+        ActivationPlan plan = Activation.order(units);
+        Map<String, Object> result = new LinkedHashMap<String, Object>();
+        result.put("started", plan.getOrder());
+        result.put("refusal", plan.getRefusals().isEmpty() ? null : refusalOf(plan.getRefusals().get(0)));
+        return result;
     }
 
     private static Map<String, Object> supports(Map<String, Object> given) {
@@ -205,6 +232,17 @@ public final class BayonetDriver {
         refusal.put("detail", detail);
         refusal.put("fix", fix);
         return refusal;
+    }
+
+    /**
+     * @implNote The message carries the plugin the engine attributed the refusal to, so a vector
+     * asking that a refusal name both sides reads the engine's own sentence rather than one this
+     * driver assembled from two getters.
+     */
+    private static Map<String, Object> refusalOf(PluginException refusal) {
+        Map<String, Object> answer = refusalOf(refusal.getDetail(), refusal.getFix());
+        answer.put("message", refusal.getMessage());
+        return answer;
     }
 
     private static Map<String, Object> unwitnessed(String reason) {

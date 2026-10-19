@@ -11,11 +11,16 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Sorts plugins so a provider activates before its consumers.
+ * Sorts units so a provider activates before its consumers, and refuses the ones whose mandatory
+ * needs nothing in the set meets.
  *
- * @implNote Edges come from services only. A capability is consumed by the HOST after every
- * activation finishes, while a service is the plugin-to-plugin channel during activation, so a
- * capability implies no order and adding one would build a mechanism nothing needs.
+ * @implNote Edges come from services. A capability is consumed by the HOST after every activation
+ * finishes, while a service is the plugin-to-plugin channel during activation, so a capability
+ * implies no order for a plugin host.
+ * @implNote Whether an absence is tolerated is declared per need rather than decided here, which is
+ * what lets one ordering serve a plugin host and a kernel. A caller whose units declare nothing
+ * gets the older behaviour, every need optional, because that is what a bare service id in a
+ * manifest means.
  */
 public final class Activation {
 
@@ -29,34 +34,66 @@ public final class Activation {
      * @param provides service ids each plugin id provides, keyed by plugin id
      * @param consumes service ids each plugin id consumes, keyed by plugin id
      * @return the resulting order, plus the dependency cycles that were left out of it
-     * @implNote A consumed service nobody provides draws no edge: the consumer activates anyway and
-     * resolves later or times out, because at ecosystem scale providers appear and disappear and a
-     * hard order fails the moment one is disabled.
+     * @implNote Every need read this way is optional, which is what a bare service id means: a
+     * consumed service nobody provides draws no edge, the consumer activates anyway and resolves
+     * later or times out, because at ecosystem scale providers appear and disappear and a hard
+     * order fails the moment one is disabled.
      */
     public static ActivationPlan order(List<String> ids, Map<String, List<String>> provides, Map<String, List<String>> consumes) {
-        Map<String, List<String>> providersOf = new HashMap<String, List<String>>();
+        List<ActivationUnit> units = new ArrayList<ActivationUnit>();
         for (String id : ids) {
+            List<ActivationUnit.Offer> offers = new ArrayList<ActivationUnit.Offer>();
             for (String serviceId : listOf(provides, id)) {
-                List<String> owners = providersOf.get(serviceId);
-                if (owners == null) {
-                    owners = new ArrayList<String>();
-                    providersOf.put(serviceId, owners);
-                }
-                owners.add(id);
+                offers.add(new ActivationUnit.Offer(DeclarationKind.SERVICE, serviceId));
+            }
+            List<ActivationUnit.Need> needs = new ArrayList<ActivationUnit.Need>();
+            for (String serviceId : listOf(consumes, id)) {
+                needs.add(new ActivationUnit.Need(DeclarationKind.SERVICE, serviceId, true, false));
+            }
+            units.add(new ActivationUnit(id, offers, needs));
+        }
+        return order(units);
+    }
+
+    /**
+     * Computes an activation order for a set of units, refusing each one whose mandatory needs
+     * nothing in the set meets.
+     *
+     * @param units the units to order
+     * @return the resulting order, the dependency cycles left out of it, and one refusal per unit
+     * that cannot start
+     */
+    public static ActivationPlan order(List<ActivationUnit> units) {
+        Set<String> refusedIds = new LinkedHashSet<String>();
+        List<PluginException> refusals = refusals(units, refusedIds);
+
+        List<String> ids = new ArrayList<String>();
+        for (ActivationUnit unit : units) {
+            if (!refusedIds.contains(unit.getId())) {
+                ids.add(unit.getId());
             }
         }
 
+        Map<String, List<String>> providersOf = providersOf(units, refusedIds);
         Map<String, Set<String>> dependencies = new HashMap<String, Set<String>>();
         for (String id : ids) {
-            Set<String> needed = new LinkedHashSet<String>();
-            for (String serviceId : listOf(consumes, id)) {
-                for (String provider : listOf(providersOf, serviceId)) {
-                    if (!provider.equals(id)) {
+            dependencies.put(id, new LinkedHashSet<String>());
+        }
+        for (ActivationUnit unit : units) {
+            if (refusedIds.contains(unit.getId())) {
+                continue;
+            }
+            Set<String> needed = dependencies.get(unit.getId());
+            for (ActivationUnit.Need need : unit.getRequires()) {
+                if (need.getKind() != DeclarationKind.SERVICE) {
+                    continue;
+                }
+                for (String provider : listOf(providersOf, need.getId())) {
+                    if (!provider.equals(unit.getId())) {
                         needed.add(provider);
                     }
                 }
             }
-            dependencies.put(id, needed);
         }
 
         List<List<String>> cycles = findCycles(ids, dependencies);
@@ -89,7 +126,61 @@ public final class Activation {
             }
         }
 
-        return new ActivationPlan(order, cycles);
+        return new ActivationPlan(order, cycles, refusals);
+    }
+
+    /**
+     * @implNote Run to a fixed point, because a unit refused for its own missing need stops being a
+     * provider: a consumer whose only provider was refused has its mandatory need unmet just as
+     * surely as one nobody ever offered, and calling it started would be a lie the host acts on.
+     */
+    private static List<PluginException> refusals(List<ActivationUnit> units, Set<String> refusedIds) {
+        List<PluginException> refusals = new ArrayList<PluginException>();
+        boolean refusedMore = true;
+        while (refusedMore) {
+            refusedMore = false;
+            Map<String, List<String>> providersOf = providersOf(units, refusedIds);
+            for (ActivationUnit unit : units) {
+                if (refusedIds.contains(unit.getId())) {
+                    continue;
+                }
+                for (ActivationUnit.Need need : unit.getRequires()) {
+                    if (need.getKind() != DeclarationKind.SERVICE || need.isOptional()
+                            || !listOf(providersOf, need.getId()).isEmpty()) {
+                        continue;
+                    }
+                    refusedIds.add(unit.getId());
+                    refusals.add(new PluginException(unit.getId(),
+                            "requires \"" + need.getId() + "\", which nothing here provides",
+                            "install something that provides \"" + need.getId()
+                                    + "\", or mark the requirement optional"));
+                    refusedMore = true;
+                    break;
+                }
+            }
+        }
+        return refusals;
+    }
+
+    private static Map<String, List<String>> providersOf(List<ActivationUnit> units, Set<String> refusedIds) {
+        Map<String, List<String>> providersOf = new HashMap<String, List<String>>();
+        for (ActivationUnit unit : units) {
+            if (refusedIds.contains(unit.getId())) {
+                continue;
+            }
+            for (ActivationUnit.Offer offer : unit.getProvides()) {
+                if (offer.getKind() != DeclarationKind.SERVICE) {
+                    continue;
+                }
+                List<String> owners = providersOf.get(offer.getId());
+                if (owners == null) {
+                    owners = new ArrayList<String>();
+                    providersOf.put(offer.getId(), owners);
+                }
+                owners.add(unit.getId());
+            }
+        }
+        return providersOf;
     }
 
     private static List<String> listOf(Map<String, List<String>> source, String key) {

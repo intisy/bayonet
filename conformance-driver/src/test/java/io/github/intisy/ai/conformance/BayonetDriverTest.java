@@ -30,14 +30,11 @@ class BayonetDriverTest {
     private static final Gson GSON = new Gson();
 
     /**
-     * Twelve of twenty-two, which is four gaps rather than the three the design names: constraints
-     * (resolve), per-requirement activation policy (boot), the edge source (order under
-     * capabilities), and REVOCATION, which no gap in section 5 covers.
+     * What is left of the twelve this engine declined when the kit first measured it. Per-requirement
+     * activation policy (boot) is in, so the remaining three gaps are constraints (resolve), the edge
+     * source (order under capabilities), and REVOCATION, which no gap in section 5 covers.
      */
     private static final List<String> UNWITNESSED = Arrays.asList(
-        "boot/refuses-a-degradable-requirement-that-is-not-optional",
-        "boot/refuses-a-missing-mandatory-requirement",
-        "boot/starts-without-a-missing-optional-requirement",
         "order/orders-a-capability-provider-before-its-consumer",
         "order/orders-an-optional-requirement-that-is-present",
         "order/reports-a-cycle-with-its-members",
