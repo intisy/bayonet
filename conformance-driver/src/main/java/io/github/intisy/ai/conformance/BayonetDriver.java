@@ -4,6 +4,9 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import io.github.intisy.ai.engine.Activation;
+import io.github.intisy.ai.engine.Budget;
+import io.github.intisy.ai.engine.ConstraintVocabulary;
+import io.github.intisy.ai.engine.Diagnostics;
 import io.github.intisy.ai.engine.ActivationPlan;
 import io.github.intisy.ai.engine.ActivationUnit;
 import io.github.intisy.ai.engine.DeclarationKind;
@@ -13,6 +16,7 @@ import io.github.intisy.ai.engine.PluginException;
 import io.github.intisy.ai.engine.PluginHost;
 import io.github.intisy.ai.engine.SchemaIssue;
 import io.github.intisy.ai.engine.ServiceHub;
+import io.github.intisy.ai.engine.ServiceRequirement;
 import io.github.intisy.ai.engine.Scheduler;
 
 import java.io.BufferedReader;
@@ -40,6 +44,15 @@ public final class BayonetDriver {
     private static final Gson GSON = new GsonBuilder().serializeNulls().create();
 
     private static final List<String> WELL_KNOWN = Arrays.asList("accounts", "routing", "activity");
+
+    /**
+     * The constraint names the vectors use, declared here because {@code :engine} mints no
+     * vocabulary: what a constraint is compared against and in which direction is the host's to
+     * say, exactly as the well-known service ids above are.
+     */
+    private static final ConstraintVocabulary VOCABULARY = ConstraintVocabulary.of(Arrays.asList(
+        new ConstraintVocabulary.Entry("minReplicas", "maxReplicas", ConstraintVocabulary.Bound.LOWER),
+        new ConstraintVocabulary.Entry("maxLatencyMs", "latencyMs", ConstraintVocabulary.Bound.UPPER)));
 
     private BayonetDriver() {
     }
@@ -101,9 +114,7 @@ public final class BayonetDriver {
             return boot(given);
         }
         if ("resolve".equals(op)) {
-            return unwitnessed("this engine has no constraints, no attributes and no budget: a"
-                + " service is present or absent, so there is nothing to re-evaluate and nothing to"
-                + " degrade");
+            return resolve(given);
         }
         throw new IllegalArgumentException("unknown op '" + op + "'");
     }
@@ -134,6 +145,96 @@ public final class BayonetDriver {
         result.put("started", plan.getOrder());
         result.put("refusal", plan.getRefusals().isEmpty() ? null : refusalOf(plan.getRefusals().get(0)));
         return result;
+    }
+
+    /**
+     * @implNote Virtual time: the scheduler is fired by hand, so a 30 second budget costs nothing
+     * and the engine still sees the budget the vector states. The constraint vocabulary is declared
+     * HERE because the engine mints none, exactly as the well-known service ids are.
+     */
+    private static Map<String, Object> resolve(Map<String, Object> given) {
+        Map<String, Object> requirement = map(given.get("requirement"));
+        Map<String, Object> provider = map(given.get("provider"));
+        String serviceId = String.valueOf(requirement.get("id"));
+
+        final List<String> reports = new ArrayList<String>();
+        Diagnostics.setSink(new Diagnostics.Sink() {
+            @Override
+            public void accept(String message) {
+                reports.add(message);
+            }
+        });
+        try {
+            ManualScheduler scheduler = new ManualScheduler();
+            ServiceHub hub = new ServiceHub(scheduler, null);
+            hub.wellKnown(Arrays.asList(serviceId));
+            hub.constraintVocabulary(VOCABULARY);
+
+            ScriptedProvider scripted = new ScriptedProvider(attributesByPoll(provider),
+                Boolean.TRUE.equals(provider.get("servesOnlyUnconstrained")));
+            hub.forPlugin("the-conformance-provider").register(serviceId, scripted, numbers(provider.get("advertised")));
+
+            Map<String, Object> declared = new LinkedHashMap<String, Object>();
+            declared.put("id", serviceId);
+            declared.put("optional", Boolean.FALSE);
+            declared.put("degradable", requirement.get("degradable"));
+            declared.put("constraints", requirement.get("constraints"));
+
+            Settlement settlement = new Settlement();
+            hub.forPlugin("the-conformance-consumer")
+                .want(ServiceRequirement.of(declared), Budget.of(
+                    (long) number(given.get("budgetMillis"), 30000),
+                    (long) number(given.get("pollMillis"), 1000)))
+                .then(settlement);
+            for (int tick = 0; tick < 200 && !settlement.settled(); tick++) {
+                scheduler.fireAll();
+            }
+
+            Map<String, Object> result = new LinkedHashMap<String, Object>();
+            boolean degraded = !reports.isEmpty();
+            result.put("served", Boolean.valueOf(settlement.value != null && !degraded));
+            result.put("degraded", Boolean.valueOf(degraded));
+            result.put("atPoll", Integer.valueOf(scripted.readsAtService));
+            result.put("attributes", scripted.current());
+            result.put("report", reports.isEmpty() ? null : join(reports));
+            result.put("refusal", settlement.failure == null ? null : refusalOf(settlement.failure));
+            result.put("asks", scripted.asks);
+            return result;
+        } finally {
+            Diagnostics.setSink(null);
+        }
+    }
+
+    private static List<Map<String, Double>> attributesByPoll(Map<String, Object> provider) {
+        List<Map<String, Double>> byPoll = new ArrayList<Map<String, Double>>();
+        for (Object entry : list(provider.get("attributesByPoll"))) {
+            byPoll.add(numbers(entry));
+        }
+        if (byPoll.isEmpty()) {
+            byPoll.add(new LinkedHashMap<String, Double>());
+        }
+        return byPoll;
+    }
+
+    private static Map<String, Double> numbers(Object value) {
+        Map<String, Double> out = new LinkedHashMap<String, Double>();
+        for (Map.Entry<String, Object> entry : map(value).entrySet()) {
+            if (entry.getValue() instanceof Number) {
+                out.put(entry.getKey(), Double.valueOf(((Number) entry.getValue()).doubleValue()));
+            }
+        }
+        return out;
+    }
+
+    private static String join(List<String> lines) {
+        StringBuilder out = new StringBuilder();
+        for (int index = 0; index < lines.size(); index++) {
+            if (index > 0) {
+                out.append("\n");
+            }
+            out.append(lines.get(index));
+        }
+        return out.toString();
     }
 
     private static Map<String, Object> supports(Map<String, Object> given) {

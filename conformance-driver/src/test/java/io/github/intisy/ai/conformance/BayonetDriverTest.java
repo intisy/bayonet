@@ -30,16 +30,10 @@ class BayonetDriverTest {
     private static final Gson GSON = new Gson();
 
     /**
-     * What is left of the twelve this engine declined when the kit first measured it. Per-requirement
-     * activation policy (boot) and the edge source (order under capabilities) are in, so the
-     * remaining two gaps are constraints (resolve) and REVOCATION, which no gap in section 5 covers.
+     * What is left of the twelve this engine declined when the kit first measured it. Three of the
+     * four gaps are in, so what remains is REVOCATION, which no gap in section 5 covers.
      */
     private static final List<String> UNWITNESSED = Arrays.asList(
-        "resolve/an-empty-live-attribute-map-keeps-the-advertised-claim",
-        "resolve/asks-with-the-consumers-constraints-before-falling-back",
-        "resolve/degrades-when-never-satisfied-and-degradable",
-        "resolve/refuses-when-never-satisfied-and-not-degradable",
-        "resolve/serves-when-attributes-satisfy-before-the-deadline",
         "revoke/a-revoked-handle-says-so");
 
     @Test

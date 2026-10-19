@@ -373,6 +373,20 @@ public final class PluginHost {
             }
 
             @Override
+            public Scheduler.Cancellable register(String id, ServiceProvider provider, Map<String, Double> advertised) {
+                return refuseLate(pluginId, "a late registration of service", id)
+                        ? inert()
+                        : registry.register(id, provider, advertised);
+            }
+
+            @Override
+            public Pending<Object> want(ServiceRequirement requirement, Budget budget) {
+                return refuseLate(pluginId, "a late want of service", requirement.getId())
+                        ? refuseWant(pluginId, requirement.getId())
+                        : registry.want(requirement, budget);
+            }
+
+            @Override
             public List<String> ids() {
                 return registry.ids();
             }

@@ -1,6 +1,7 @@
 package io.github.intisy.ai.engine;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -76,17 +77,57 @@ public final class ServiceHub {
          */
         Scheduler.Cancellable register(String id, Object service);
 
+        /**
+         * @param id the service id to register, which must be namespaced to this plugin unless it is a well-known id
+         * @param provider what answers for the service: its live attributes, and whether it serves a constrained ask
+         * @param advertised what the service claims until the provider reports otherwise, or null when it claims nothing
+         * @return a handle that unregisters the service when cancelled
+         */
+        Scheduler.Cancellable register(String id, ServiceProvider provider, Map<String, Double> advertised);
+
+        /**
+         * Waits for a service that satisfies this requirement's constraints, re-asking until the
+         * budget is spent and then degrading with a report or refusing.
+         *
+         * @param requirement what the plugin asks for, and what a shortfall costs it
+         * @param budget how long to keep re-asking, and how often
+         * @return a value that settles with the service, or rejects when the budget is spent and the requirement is not degradable
+         */
+        Pending<Object> want(ServiceRequirement requirement, Budget budget);
+
         /** @return every currently registered service id */
         List<String> ids();
     }
 
-    private static final class Entry {
+    /** One registration: who owns it, who answers for it, and what its declaration claimed. */
+    static final class Entry {
         private final String pluginId;
-        private final Object service;
+        private final ServiceProvider provider;
+        private final Map<String, Double> advertised;
 
-        Entry(String pluginId, Object service) {
+        Entry(String pluginId, ServiceProvider provider, Map<String, Double> advertised) {
             this.pluginId = pluginId;
-            this.service = service;
+            this.provider = provider;
+            this.advertised = advertised == null
+                    ? Collections.<String, Double>emptyMap()
+                    : Collections.unmodifiableMap(new LinkedHashMap<String, Double>(advertised));
+        }
+
+        ServiceProvider getProvider() {
+            return provider;
+        }
+
+        Map<String, Double> getAdvertised() {
+            return advertised;
+        }
+
+        /**
+         * @implNote Asked for rather than held, because a provider may serve a different instance
+         * to a differently constrained consumer. A plain registration answers the same object
+         * every time, which is what {@link ServiceProviders#constant} is for.
+         */
+        Object unconstrained() {
+            return provider.serviceFor(Collections.<String, Double>emptyMap());
         }
     }
 
@@ -108,6 +149,7 @@ public final class ServiceHub {
     private final Map<String, Set<Listener>> watchers = new LinkedHashMap<String, Set<Listener>>();
     private final Map<String, List<Scheduler.Cancellable>> watching = new LinkedHashMap<String, List<Scheduler.Cancellable>>();
     private List<String> wellKnown = new ArrayList<String>();
+    private ConstraintVocabulary vocabulary = ConstraintVocabulary.EMPTY;
 
     // No plugin can own this, because a manifest id is never empty, which is what keeps a host's own
     // service out of every per-plugin sweep.
@@ -135,6 +177,29 @@ public final class ServiceHub {
     }
 
     /**
+     * The constraint names this host understands, which is what a constrained want is matched with.
+     *
+     * @param declared the vocabulary, or null for none, under which every constraint is unknown
+     * @implNote Set by the host for the reason {@link #wellKnown} is: this package mints no
+     * vocabulary, and a constraint it cannot find in one is refused rather than waved through.
+     */
+    public void constraintVocabulary(ConstraintVocabulary declared) {
+        this.vocabulary = declared == null ? ConstraintVocabulary.EMPTY : declared;
+    }
+
+    ConstraintVocabulary constraintVocabulary() {
+        return vocabulary;
+    }
+
+    Scheduler scheduler() {
+        return scheduler;
+    }
+
+    Entry entryOf(String id) {
+        return entries.get(id);
+    }
+
+    /**
      * @param pluginId the plugin the returned registry is scoped to
      * @return a registry that attributes this plugin's own registrations, reads and consumptions to it
      */
@@ -144,7 +209,7 @@ public final class ServiceHub {
             public Object get(String id) {
                 consumed(pluginId, id);
                 Entry entry = entries.get(id);
-                return entry == null ? null : entry.service;
+                return entry == null ? null : entry.unconstrained();
             }
 
             @Override
@@ -164,7 +229,18 @@ public final class ServiceHub {
 
             @Override
             public Scheduler.Cancellable register(String id, Object service) {
-                return addService(pluginId, id, service);
+                return addService(pluginId, id, ServiceProviders.constant(service), null);
+            }
+
+            @Override
+            public Scheduler.Cancellable register(String id, ServiceProvider provider, Map<String, Double> advertised) {
+                return addService(pluginId, id, provider, advertised);
+            }
+
+            @Override
+            public Pending<Object> want(ServiceRequirement requirement, Budget budget) {
+                consumed(pluginId, requirement.getId());
+                return new ConstrainedWant(ServiceHub.this, pluginId, requirement, budget).start();
             }
 
             @Override
@@ -185,7 +261,7 @@ public final class ServiceHub {
      * id twice replaces it, because a host wiring itself up twice is a restart, not a conflict.
      */
     public void hostService(String id, Object service) {
-        entries.put(id, new Entry(HOST_OWNER, service));
+        entries.put(id, new Entry(HOST_OWNER, ServiceProviders.constant(service), null));
         Set<Waiter> pending = waiters.remove(id);
         if (pending != null) {
             for (Waiter waiter : pending) {
@@ -206,7 +282,7 @@ public final class ServiceHub {
      */
     public Object get(String id) {
         Entry entry = entries.get(id);
-        return entry == null ? null : entry.service;
+        return entry == null ? null : entry.unconstrained();
     }
 
     /** @return every currently registered service id */
@@ -254,7 +330,13 @@ public final class ServiceHub {
         }
     }
 
-    private Scheduler.Cancellable addService(final String pluginId, final String id, Object service) {
+    /**
+     * @implNote The instance is asked for only when somebody is listening. {@link
+     * Entry#unconstrained} is a call into the provider, and a registration nobody is waiting on
+     * must not look to that provider like a consumer arriving.
+     */
+    private Scheduler.Cancellable addService(final String pluginId, final String id,
+                                             ServiceProvider provider, Map<String, Double> advertised) {
         if (!mayRegister(pluginId, id)) {
             String name = id.contains(":") ? id.substring(id.lastIndexOf(':') + 1) : id;
             throw new PluginException(pluginId,
@@ -267,18 +349,22 @@ public final class ServiceHub {
                     "service \"" + id + "\" is already registered by " + existing.pluginId,
                     "disable one of the two plugins, or have each register its own namespaced id so consumers can ask for the one they want");
         }
-        entries.put(id, new Entry(pluginId, service));
+        entries.put(id, new Entry(pluginId, provider, advertised));
         provided(pluginId, id);
         Set<Waiter> pending = waiters.remove(id);
-        if (pending != null) {
-            for (Waiter waiter : pending) {
-                if (waiter.timer != null) {
-                    waiter.timer.cancel();
+        boolean watched = watchers.get(id) != null && !watchers.get(id).isEmpty();
+        if ((pending != null && !pending.isEmpty()) || watched) {
+            Object service = entries.get(id).unconstrained();
+            if (pending != null) {
+                for (Waiter waiter : pending) {
+                    if (waiter.timer != null) {
+                        waiter.timer.cancel();
+                    }
+                    waiter.settled.resolve(service);
                 }
-                waiter.settled.resolve(service);
             }
+            notifyWatchers(id, service, true);
         }
-        notifyWatchers(id, service, true);
         return new Scheduler.Cancellable() {
             @Override
             public void cancel() {
@@ -304,7 +390,7 @@ public final class ServiceHub {
         consumed(pluginId, id);
         Entry entry = entries.get(id);
         if (entry != null) {
-            return Pending.of(entry.service);
+            return Pending.of(entry.unconstrained());
         }
         Pending<Object> settled = new Pending<Object>();
         final Waiter waiter = new Waiter(pluginId, settled);
