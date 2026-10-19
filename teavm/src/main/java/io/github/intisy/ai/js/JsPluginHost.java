@@ -85,7 +85,7 @@ final class JsPluginHost implements JSObject {
         List<String> surfaces = strings(member(tree, "surfaces"));
         List<String> vocabulary = strings(member(tree, "vocabulary"));
         List<String> wellKnownServices = strings(member(tree, "wellKnownServices"));
-        PluginHost host = new PluginHost(applicationsOf(tree), api, surfaces, new JsScheduler());
+        PluginHost host = hostOf(tree, api, surfaces);
         host.knownCapabilities(vocabulary);
         host.wellKnownServices(wellKnownServices);
         return build(host);
@@ -93,19 +93,18 @@ final class JsPluginHost implements JSObject {
 
     /**
      * @implNote {@code applications} is read first and the scalar {@code app} is the fallback, so
-     * every caller written before a host could host more than one keeps working unchanged.
+     * every caller written before a host could host more than one keeps working unchanged. The
+     * fallback goes through the String constructor rather than wrapping the value in a list here,
+     * so the rule that an absent or blank app means "every application" lives in ONE place. Building
+     * the list here instead let {@code app: ""} through as an application literally named "", which
+     * then matched no target and refused every targeted artifact.
      */
-    private static List<String> applicationsOf(Object tree) {
+    private static PluginHost hostOf(Object tree, int api, List<String> surfaces) {
         List<String> applications = strings(member(tree, "applications"));
         if (!applications.isEmpty()) {
-            return applications;
+            return new PluginHost(applications, api, surfaces, new JsScheduler());
         }
-        String app = text(tree, "app");
-        List<String> single = new ArrayList<String>();
-        if (app != null) {
-            single.add(app);
-        }
-        return single;
+        return new PluginHost(text(tree, "app"), api, surfaces, new JsScheduler());
     }
 
     static JsPluginHost build(final PluginHost host) {

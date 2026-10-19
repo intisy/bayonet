@@ -128,6 +128,11 @@ it("accepts a plugin that targets nothing, through the bundle", () => {
   expect(host.supports({ id: "old-thing", api: 1 })).toBeNull();
 });
 
+it("treats a blank app as no application rather than one named empty string", () => {
+  const host = createPluginHost({ app: "", api: 2 });
+  expect(host.supports({ id: "studio-thing", api: 1, targets: ["studio"] })).toBeNull();
+});
+
 it("hosts every application a composite declares, through the bundle", () => {
   const host = createPluginHost({ applications: ["claude", "studio"], api: 2 });
   expect(host.supports({ id: "studio-thing", api: 1, targets: ["studio"] })).toBeNull();

@@ -122,6 +122,15 @@ class PluginHostTest {
     }
 
     @Test
+    void aBlankAppIsNoApplicationRatherThanOneNamedEmptyString() {
+        PluginHost blank = new PluginHost("", 2, Arrays.asList("tui"));
+        assertTrue(blank.getApplications().isEmpty());
+        ManifestFacts forStudio = new ManifestFacts("studio-thing", 1, null, null,
+                Arrays.asList("studio"), MANIFEST);
+        assertNull(blank.supports(forStudio));
+    }
+
+    @Test
     void handsAPluginASessionCarryingItsManifestAndItsFencedRegistry() {
         PluginHost host = host();
         final PluginSession session = host.sessionFor(screens(), new RecordingBus());

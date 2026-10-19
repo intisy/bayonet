@@ -442,9 +442,16 @@ export interface PluginPathsShape {
 export interface PluginHostOptionsShape {
   /** The API major version to claim. Defaults to this package's own. */
   api?: number;
-  /** The app id plugins see on the host descriptor, for a host that hosts exactly one. */
-  app?: string;
-  /** The apps this host hosts, for a composite hosting more than one. */
+  /**
+   * The app id plugins see on the host descriptor.
+   *
+   * @remarks
+   * Required even for a composite, which names its primary here and the whole set in
+   * `applications()`. It stays required because `HostDescriptorShape.app` is a
+   * non-null string every plugin may read, and making this optional made that type a lie.
+   */
+  app: string;
+  /** Every app this host hosts, for a composite hosting more than one. */
   applications?: string[];
   /** Surface ids this host renders. */
   surfaces?: string[];

@@ -8,17 +8,19 @@ import java.util.List;
 @TsInterface(data = true)
 public interface PluginHostOptionsShape {
     /**
-     * The app id plugins see on the host descriptor, for a host that hosts exactly one.
+     * The app id plugins see on the host descriptor.
      *
-     * @return the app id, or absent when {@link #applications()} names them instead
+     * @return the app id
+     * @implNote Required even for a composite, which names its primary here and the whole set in
+     * {@link #applications()}. It stays required because {@code HostDescriptorShape.app} is a
+     * non-null string every plugin may read, and making this optional made that type a lie.
      */
-    @TsOptional
     String app();
 
     /**
-     * The apps this host hosts, for a composite hosting more than one.
+     * Every app this host hosts, for a composite hosting more than one.
      *
-     * @return the app ids this host hosts, or absent to fall back to {@link #app()}
+     * @return the app ids this host hosts, or absent or empty to host only {@link #app()}
      */
     @TsOptional
     List<String> applications();

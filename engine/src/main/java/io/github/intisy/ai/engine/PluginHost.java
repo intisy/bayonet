@@ -33,7 +33,7 @@ public final class PluginHost {
     /**
      * Creates a single-application host whose {@link ServiceHub} never expires a pending want; see the four-argument constructor.
      *
-     * @param app the id of the app this host belongs to, or null for a host that hosts every application
+     * @param app the id of the app this host belongs to; blank or {@code (String) null} hosts every application
      * @param api the api version this host implements
      * @param surfaces the UI surface ids this host renders
      */
@@ -44,16 +44,20 @@ public final class PluginHost {
     /**
      * Creates a single-application host.
      *
-     * @param app the id of the app this host belongs to, or null for a host that hosts every application
+     * @param app the id of the app this host belongs to; blank or {@code (String) null} hosts every application
      * @param api the api version this host implements
      * @param surfaces the UI surface ids this host renders
      * @param scheduler the timer source used to expire an unmet service want
-     * @implNote A null app becomes an EMPTY application set rather than a set holding null, because
-     * an empty set means "every application" while a set holding null would make the overlap test in
-     * {@link #supports(ManifestFacts)} answer by accident.
+     * @implNote An absent app becomes an EMPTY application set rather than a set holding one useless
+     * element, because an empty set means "every application" while a set holding null or {@code ""}
+     * would make the overlap test in {@link #supports(ManifestFacts)} answer by accident: a blank id
+     * matches no target, so a host that had really declared nothing would refuse every targeted
+     * artifact.
+     * <p>A literal {@code null} here is ambiguous against the {@link List} overload and must be cast.
      */
     public PluginHost(String app, int api, List<String> surfaces, Scheduler scheduler) {
-        this(app == null ? new ArrayList<String>() : Collections.singletonList(app), api, surfaces, scheduler);
+        this(app == null || app.isEmpty() ? new ArrayList<String>() : Collections.singletonList(app),
+                api, surfaces, scheduler);
     }
 
     /**

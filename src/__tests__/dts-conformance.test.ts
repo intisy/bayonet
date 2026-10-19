@@ -40,6 +40,12 @@ it("rejects publishing a payload the topic does not carry", () => {
   expect(result.output).toContain("TS2353");
 });
 
+it("rejects a host that names no application, whose descriptor app would be null", () => {
+  const result = check("negative-host-without-app.ts");
+  expect(result.ok).toBe(false);
+  expect(result.output).toContain("TS2345");
+});
+
 it("rejects registering a service that does not match its id", () => {
   const result = check("negative-wrong-service.ts");
   expect(result.ok).toBe(false);
