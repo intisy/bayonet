@@ -27,3 +27,7 @@ include ":jvm-seam"
 // :teavm - the engine compiled to an ES2015 module. JDK 17, because TeaVM 0.15.0's artifacts
 //          publish minimum-JVM metadata above 8.
 include ":teavm"
+
+// :conformance-driver - the adapter the engine conformance kit drives. Temporary: it is deleted
+//                       when there is nothing left to measure, and nothing publishes it.
+include ":conformance-driver"

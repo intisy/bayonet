@@ -1,0 +1,16 @@
+// TEMPORARY BY DESIGN, like the kernel's. It exists to measure where :engine cannot yet do the
+// kernel's job, and it is deleted when there is nothing left to measure. Not in PUBLISHED_MODULES,
+// so nothing publishes it.
+dependencies {
+    implementation project(":engine")
+    implementation "com.google.code.gson:gson:2.10.1"
+}
+
+// The runner spawns this as a plain command, so everything it needs is inside the one jar.
+jar {
+    manifest { attributes "Main-Class": "io.github.intisy.ai.conformance.BayonetDriver" }
+    archiveFileName = "conformance-driver.jar"
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+    exclude "META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA", "META-INF/MANIFEST.MF"
+}
