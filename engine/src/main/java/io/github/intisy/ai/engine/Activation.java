@@ -14,9 +14,9 @@ import java.util.Set;
  * Sorts units so a provider activates before its consumers, and refuses the ones whose mandatory
  * needs nothing in the set meets.
  *
- * @implNote Edges come from services. A capability is consumed by the HOST after every activation
- * finishes, while a service is the plugin-to-plugin channel during activation, so a capability
- * implies no order for a plugin host.
+ * @implNote Which declarations draw the edges is the caller's to say. A capability is consumed by
+ * the HOST after every activation finishes, while a service is the plugin-to-plugin channel during
+ * activation, so a plugin host orders on services and a kernel on capabilities.
  * @implNote Whether an absence is tolerated is declared per need rather than decided here, which is
  * what lets one ordering serve a plugin host and a kernel. A caller whose units declare nothing
  * gets the older behaviour, every need optional, because that is what a bare service id in a
@@ -56,16 +56,33 @@ public final class Activation {
     }
 
     /**
-     * Computes an activation order for a set of units, refusing each one whose mandatory needs
-     * nothing in the set meets.
+     * Computes an activation order for a set of units from their SERVICE declarations.
      *
      * @param units the units to order
      * @return the resulting order, the dependency cycles left out of it, and one refusal per unit
      * that cannot start
      */
     public static ActivationPlan order(List<ActivationUnit> units) {
+        return order(units, DeclarationKind.SERVICE);
+    }
+
+    /**
+     * Computes an activation order for a set of units, refusing each one whose mandatory needs
+     * nothing in the set meets.
+     *
+     * @param units the units to order
+     * @param edgeSource which kind of declaration draws the edges; declarations of the other kind
+     * are ignored entirely, for ordering and for refusal alike
+     * @return the resulting order, the dependency cycles left out of it, and one refusal per unit
+     * that cannot start
+     * @implNote A parameter rather than a constant because the right answer differs by caller and
+     * not by opinion: a plugin host orders on services, since a capability is consumed by the host
+     * after every activation finishes, while a kernel orders on capabilities, since one capability
+     * genuinely must start before another.
+     */
+    public static ActivationPlan order(List<ActivationUnit> units, DeclarationKind edgeSource) {
         Set<String> refusedIds = new LinkedHashSet<String>();
-        List<PluginException> refusals = refusals(units, refusedIds);
+        List<PluginException> refusals = refusals(units, refusedIds, edgeSource);
 
         List<String> ids = new ArrayList<String>();
         for (ActivationUnit unit : units) {
@@ -74,7 +91,7 @@ public final class Activation {
             }
         }
 
-        Map<String, List<String>> providersOf = providersOf(units, refusedIds);
+        Map<String, List<String>> providersOf = providersOf(units, refusedIds, edgeSource);
         Map<String, Set<String>> dependencies = new HashMap<String, Set<String>>();
         for (String id : ids) {
             dependencies.put(id, new LinkedHashSet<String>());
@@ -85,7 +102,7 @@ public final class Activation {
             }
             Set<String> needed = dependencies.get(unit.getId());
             for (ActivationUnit.Need need : unit.getRequires()) {
-                if (need.getKind() != DeclarationKind.SERVICE) {
+                if (need.getKind() != edgeSource) {
                     continue;
                 }
                 for (String provider : listOf(providersOf, need.getId())) {
@@ -134,18 +151,18 @@ public final class Activation {
      * provider: a consumer whose only provider was refused has its mandatory need unmet just as
      * surely as one nobody ever offered, and calling it started would be a lie the host acts on.
      */
-    private static List<PluginException> refusals(List<ActivationUnit> units, Set<String> refusedIds) {
+    private static List<PluginException> refusals(List<ActivationUnit> units, Set<String> refusedIds, DeclarationKind edgeSource) {
         List<PluginException> refusals = new ArrayList<PluginException>();
         boolean refusedMore = true;
         while (refusedMore) {
             refusedMore = false;
-            Map<String, List<String>> providersOf = providersOf(units, refusedIds);
+            Map<String, List<String>> providersOf = providersOf(units, refusedIds, edgeSource);
             for (ActivationUnit unit : units) {
                 if (refusedIds.contains(unit.getId())) {
                     continue;
                 }
                 for (ActivationUnit.Need need : unit.getRequires()) {
-                    if (need.getKind() != DeclarationKind.SERVICE || need.isOptional()
+                    if (need.getKind() != edgeSource || need.isOptional()
                             || !listOf(providersOf, need.getId()).isEmpty()) {
                         continue;
                     }
@@ -162,14 +179,14 @@ public final class Activation {
         return refusals;
     }
 
-    private static Map<String, List<String>> providersOf(List<ActivationUnit> units, Set<String> refusedIds) {
+    private static Map<String, List<String>> providersOf(List<ActivationUnit> units, Set<String> refusedIds, DeclarationKind edgeSource) {
         Map<String, List<String>> providersOf = new HashMap<String, List<String>>();
         for (ActivationUnit unit : units) {
             if (refusedIds.contains(unit.getId())) {
                 continue;
             }
             for (ActivationUnit.Offer offer : unit.getProvides()) {
-                if (offer.getKind() != DeclarationKind.SERVICE) {
+                if (offer.getKind() != edgeSource) {
                     continue;
                 }
                 List<String> owners = providersOf.get(offer.getId());

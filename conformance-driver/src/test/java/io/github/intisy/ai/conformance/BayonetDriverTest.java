@@ -31,13 +31,10 @@ class BayonetDriverTest {
 
     /**
      * What is left of the twelve this engine declined when the kit first measured it. Per-requirement
-     * activation policy (boot) is in, so the remaining three gaps are constraints (resolve), the edge
-     * source (order under capabilities), and REVOCATION, which no gap in section 5 covers.
+     * activation policy (boot) and the edge source (order under capabilities) are in, so the
+     * remaining two gaps are constraints (resolve) and REVOCATION, which no gap in section 5 covers.
      */
     private static final List<String> UNWITNESSED = Arrays.asList(
-        "order/orders-a-capability-provider-before-its-consumer",
-        "order/orders-an-optional-requirement-that-is-present",
-        "order/reports-a-cycle-with-its-members",
         "resolve/an-empty-live-attribute-map-keeps-the-advertised-claim",
         "resolve/asks-with-the-consumers-constraints-before-falling-back",
         "resolve/degrades-when-never-satisfied-and-degradable",

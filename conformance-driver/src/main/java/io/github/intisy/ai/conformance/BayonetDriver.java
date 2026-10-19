@@ -168,27 +168,38 @@ public final class BayonetDriver {
     }
 
     private static Map<String, Object> order(Map<String, Object> given) {
-        if (!"services".equals(given.get("edgeSource"))) {
-            return unwitnessed("this engine orders on SERVICE edges only and the edge source is a"
-                + " constant, not a parameter, so a capability graph is not a question it can be"
-                + " asked");
-        }
-        List<String> ids = new ArrayList<String>();
-        Map<String, List<String>> provides = new HashMap<String, List<String>>();
-        Map<String, List<String>> consumes = new HashMap<String, List<String>>();
+        DeclarationKind edgeSource = "capabilities".equals(given.get("edgeSource"))
+            ? DeclarationKind.CAPABILITY
+            : DeclarationKind.SERVICE;
+        List<ActivationUnit> units = new ArrayList<ActivationUnit>();
         for (Object entry : list(given.get("units"))) {
             Map<String, Object> unit = map(entry);
-            String id = String.valueOf(unit.get("id"));
-            ids.add(id);
-            provides.put(id, idsOfKind(unit.get("provides"), "service"));
-            consumes.put(id, idsOfKind(unit.get("requires"), "service"));
+            List<ActivationUnit.Offer> offers = new ArrayList<ActivationUnit.Offer>();
+            for (Object declaration : list(unit.get("provides"))) {
+                Map<String, Object> offered = map(declaration);
+                offers.add(new ActivationUnit.Offer(kindOf(offered.get("kind")),
+                    String.valueOf(offered.get("id"))));
+            }
+            List<ActivationUnit.Need> needs = new ArrayList<ActivationUnit.Need>();
+            for (Object declaration : list(unit.get("requires"))) {
+                Map<String, Object> needed = map(declaration);
+                needs.add(new ActivationUnit.Need(kindOf(needed.get("kind")),
+                    String.valueOf(needed.get("id")),
+                    !Boolean.FALSE.equals(needed.get("optional")),
+                    Boolean.TRUE.equals(needed.get("degradable"))));
+            }
+            units.add(new ActivationUnit(String.valueOf(unit.get("id")), offers, needs));
         }
-        ActivationPlan plan = Activation.order(ids, provides, consumes);
+        ActivationPlan plan = Activation.order(units, edgeSource);
         Map<String, Object> result = new LinkedHashMap<String, Object>();
         result.put("order", plan.getOrder());
         result.put("cycle", plan.getCycles().isEmpty() ? null : plan.getCycles().get(0));
         result.put("thrown", Boolean.FALSE);
         return result;
+    }
+
+    private static DeclarationKind kindOf(Object declared) {
+        return "capability".equals(declared) ? DeclarationKind.CAPABILITY : DeclarationKind.SERVICE;
     }
 
     private static Map<String, Object> revoke(Map<String, Object> given) {
@@ -250,17 +261,6 @@ public final class BayonetDriver {
         answer.put("witnessed", Boolean.FALSE);
         answer.put("reason", reason);
         return answer;
-    }
-
-    private static List<String> idsOfKind(Object declarations, String kind) {
-        List<String> ids = new ArrayList<String>();
-        for (Object entry : list(declarations)) {
-            Map<String, Object> declaration = map(entry);
-            if (kind.equals(declaration.get("kind"))) {
-                ids.add(String.valueOf(declaration.get("id")));
-            }
-        }
-        return ids;
     }
 
     @SuppressWarnings("unchecked")
