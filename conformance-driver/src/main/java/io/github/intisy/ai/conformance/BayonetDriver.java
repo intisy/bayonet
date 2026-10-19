@@ -17,6 +17,8 @@ import io.github.intisy.ai.engine.PluginHost;
 import io.github.intisy.ai.engine.SchemaIssue;
 import io.github.intisy.ai.engine.ServiceHub;
 import io.github.intisy.ai.engine.ServiceRequirement;
+import io.github.intisy.ai.engine.ServiceRevoked;
+import io.github.intisy.ai.seam.jvm.ReflectiveHandles;
 import io.github.intisy.ai.engine.Scheduler;
 
 import java.io.BufferedReader;
@@ -303,40 +305,60 @@ public final class BayonetDriver {
         return "capability".equals(declared) ? DeclarationKind.CAPABILITY : DeclarationKind.SERVICE;
     }
 
+    /**
+     * @implNote {@code use} deliberately calls the handle taken at the FIRST lookup. A handle
+     * fetched after the withdrawal would simply be absent, which proves nothing about what a
+     * consumer already holding one is told.
+     */
     private static Map<String, Object> revoke(Map<String, Object> given) {
         List<String> steps = strings(given.get("steps"));
-        if (steps.contains("use")) {
-            return unwitnessed("a consumer here holds the provider's own object, not a handle this"
-                + " engine can revoke, so there is nothing that could tell it the service went away");
-        }
         String serviceId = String.valueOf(map(given.get("service")).get("id"));
-        ServiceHub hub = new ServiceHub(Scheduler.NEVER, new ServiceHub.Recorder() {
-            @Override
-            public void provided(String pluginId, String id) {
-            }
-
-            @Override
-            public void consumed(String pluginId, String id) {
-            }
-        });
+        ServiceHub hub = new ServiceHub(Scheduler.NEVER, null);
         hub.wellKnown(WELL_KNOWN);
+        hub.handles(new ReflectiveHandles());
         ServiceHub.Registry registry = hub.forPlugin("the-conformance-plugin");
         Scheduler.Cancellable registration = null;
+        ConformanceService held = null;
         List<Boolean> lookups = new ArrayList<Boolean>();
+        Map<String, Object> result = new LinkedHashMap<String, Object>();
         for (String step : steps) {
             if ("register".equals(step)) {
-                registration = registry.register(serviceId, "the conformance service");
+                registration = registry.register(serviceId, new ConformanceService() {
+                    @Override
+                    public String name() {
+                        return "the conformance service";
+                    }
+                });
             } else if ("lookup".equals(step)) {
-                lookups.add(Boolean.valueOf(hub.get(serviceId) != null));
+                Object found = hub.get(serviceId);
+                lookups.add(Boolean.valueOf(found != null));
+                if (held == null && found != null) {
+                    held = (ConformanceService) found;
+                }
             } else if ("revoke".equals(step)) {
                 registration.cancel();
+            } else if ("use".equals(step)) {
+                use(held, result);
             } else {
                 throw new IllegalArgumentException("unknown step '" + step + "'");
             }
         }
-        Map<String, Object> result = new LinkedHashMap<String, Object>();
         result.put("lookups", lookups);
         return result;
+    }
+
+    private static void use(ConformanceService held, Map<String, Object> result) {
+        if (held == null) {
+            throw new IllegalStateException("no handle was held, so 'use' has nothing to use");
+        }
+        try {
+            result.put("name", held.name());
+            result.put("used", Boolean.TRUE);
+            result.put("reason", null);
+        } catch (ServiceRevoked revoked) {
+            result.put("used", Boolean.FALSE);
+            result.put("reason", "revoked");
+        }
     }
 
     private static Map<String, Object> refusalOf(String detail, String fix) {

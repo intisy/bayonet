@@ -13,7 +13,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -30,11 +29,11 @@ class BayonetDriverTest {
     private static final Gson GSON = new Gson();
 
     /**
-     * What is left of the twelve this engine declined when the kit first measured it. Three of the
-     * four gaps are in, so what remains is REVOCATION, which no gap in section 5 covers.
+     * EMPTY, and that is the measurement: the twelve vectors this engine declined when the kit
+     * first ran are the four gaps, and all four are in. A vector reappearing here is a regression,
+     * which is why the set is asserted rather than the count.
      */
-    private static final List<String> UNWITNESSED = Arrays.asList(
-        "revoke/a-revoked-handle-says-so");
+    private static final List<String> UNWITNESSED = Collections.emptyList();
 
     @Test
     void answersOrDeclinesEveryVectorWithoutCrashing() throws IOException {
@@ -49,7 +48,7 @@ class BayonetDriverTest {
     }
 
     @Test
-    void declinesExactlyWhatThisEngineCannotBeAsked() throws IOException {
+    void declinesNothing() throws IOException {
         List<Map<String, Object>> corpus = corpus();
         assumeTrue(!corpus.isEmpty(), "the conformance corpus is not beside this checkout");
         TreeSet<String> declined = new TreeSet<String>();

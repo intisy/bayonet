@@ -1,5 +1,8 @@
 dependencies {
     api project(":contract")
+    // ReflectiveHandles backs the engine's Handles seam, which is declared there and not in the
+    // contract: the engine registry is what hands a service over, and it depends on no other module.
+    api project(":engine")
     // GsonJsonCodec's own surface takes Gson types, so a consumer configuring one needs them too.
     api "com.google.code.gson:gson:2.10.1"
 

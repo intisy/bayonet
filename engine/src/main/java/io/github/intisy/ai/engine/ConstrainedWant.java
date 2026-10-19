@@ -39,7 +39,7 @@ final class ConstrainedWant {
         if (entry != null) {
             seen = overlay(entry.getAdvertised(), entry.getProvider().attributes());
             if (hub.constraintVocabulary().satisfies(requirement.getConstraints(), seen)) {
-                Object served = entry.getProvider().serviceFor(requirement.getConstraints());
+                Object served = entry.serve(hub.handles(), requirement.getConstraints());
                 if (served != null) {
                     settled.resolve(served);
                     return;
@@ -90,9 +90,9 @@ final class ConstrainedWant {
             settled.reject(unsatisfied(null));
             return;
         }
-        Object served = entry.getProvider().serviceFor(requirement.getConstraints());
+        Object served = entry.serve(hub.handles(), requirement.getConstraints());
         if (served == null) {
-            served = entry.getProvider().serviceFor(Collections.<String, Double>emptyMap());
+            served = entry.serve(hub.handles(), Collections.<String, Double>emptyMap());
         }
         if (served == null) {
             settled.reject(new PluginException(consumerId,

@@ -102,11 +102,14 @@ public final class ServiceHub {
     /** One registration: who owns it, who answers for it, and what its declaration claimed. */
     static final class Entry {
         private final String pluginId;
+        private final String serviceId;
         private final ServiceProvider provider;
         private final Map<String, Double> advertised;
+        private final List<Handles.Handle> handed = new ArrayList<Handles.Handle>();
 
-        Entry(String pluginId, ServiceProvider provider, Map<String, Double> advertised) {
+        Entry(String pluginId, String serviceId, ServiceProvider provider, Map<String, Double> advertised) {
             this.pluginId = pluginId;
+            this.serviceId = serviceId;
             this.provider = provider;
             this.advertised = advertised == null
                     ? Collections.<String, Double>emptyMap()
@@ -126,8 +129,29 @@ public final class ServiceHub {
          * to a differently constrained consumer. A plain registration answers the same object
          * every time, which is what {@link ServiceProviders#constant} is for.
          */
-        Object unconstrained() {
-            return provider.serviceFor(Collections.<String, Double>emptyMap());
+        Object unconstrained(Handles handles) {
+            return serve(handles, Collections.<String, Double>emptyMap());
+        }
+
+        /**
+         * @implNote Every instance handed out is remembered, because withdrawal has to reach the
+         * consumers already holding one and a provider may have served each of them differently.
+         */
+        Object serve(Handles handles, Map<String, Double> constraints) {
+            Object served = provider.serviceFor(constraints);
+            if (served == null) {
+                return null;
+            }
+            Handles.Handle handle = handles.around(serviceId, served);
+            handed.add(handle);
+            return handle.get();
+        }
+
+        void revokeAll() {
+            for (Handles.Handle handle : handed) {
+                handle.revoke();
+            }
+            handed.clear();
         }
     }
 
@@ -150,6 +174,7 @@ public final class ServiceHub {
     private final Map<String, List<Scheduler.Cancellable>> watching = new LinkedHashMap<String, List<Scheduler.Cancellable>>();
     private List<String> wellKnown = new ArrayList<String>();
     private ConstraintVocabulary vocabulary = ConstraintVocabulary.EMPTY;
+    private Handles handles = Handles.UNWRAPPED;
 
     // No plugin can own this, because a manifest id is never empty, which is what keeps a host's own
     // service out of every per-plugin sweep.
@@ -191,6 +216,22 @@ public final class ServiceHub {
         return vocabulary;
     }
 
+    /**
+     * How a served service is wrapped so a consumer still holding one is told when it is withdrawn.
+     *
+     * @param backing the wrapping to use, or null for the portable one that reports that it cannot
+     * @implNote Set by the host because the answer is platform-specific: a JVM host wraps with a
+     * dynamic proxy, a JavaScript one with the language's own Proxy, and a host that supplies
+     * neither is told what it is giving up rather than left to assume it has it.
+     */
+    public void handles(Handles backing) {
+        this.handles = backing == null ? Handles.UNWRAPPED : backing;
+    }
+
+    Handles handles() {
+        return handles;
+    }
+
     Scheduler scheduler() {
         return scheduler;
     }
@@ -209,7 +250,7 @@ public final class ServiceHub {
             public Object get(String id) {
                 consumed(pluginId, id);
                 Entry entry = entries.get(id);
-                return entry == null ? null : entry.unconstrained();
+                return entry == null ? null : entry.unconstrained(handles);
             }
 
             @Override
@@ -261,7 +302,7 @@ public final class ServiceHub {
      * id twice replaces it, because a host wiring itself up twice is a restart, not a conflict.
      */
     public void hostService(String id, Object service) {
-        entries.put(id, new Entry(HOST_OWNER, ServiceProviders.constant(service), null));
+        entries.put(id, new Entry(HOST_OWNER, id, ServiceProviders.constant(service), null));
         Set<Waiter> pending = waiters.remove(id);
         if (pending != null) {
             for (Waiter waiter : pending) {
@@ -282,7 +323,7 @@ public final class ServiceHub {
      */
     public Object get(String id) {
         Entry entry = entries.get(id);
-        return entry == null ? null : entry.unconstrained();
+        return entry == null ? null : entry.unconstrained(handles);
     }
 
     /** @return every currently registered service id */
@@ -349,12 +390,12 @@ public final class ServiceHub {
                     "service \"" + id + "\" is already registered by " + existing.pluginId,
                     "disable one of the two plugins, or have each register its own namespaced id so consumers can ask for the one they want");
         }
-        entries.put(id, new Entry(pluginId, provider, advertised));
+        entries.put(id, new Entry(pluginId, id, provider, advertised));
         provided(pluginId, id);
         Set<Waiter> pending = waiters.remove(id);
         boolean watched = watchers.get(id) != null && !watchers.get(id).isEmpty();
         if ((pending != null && !pending.isEmpty()) || watched) {
-            Object service = entries.get(id).unconstrained();
+            Object service = entries.get(id).unconstrained(handles);
             if (pending != null) {
                 for (Waiter waiter : pending) {
                     if (waiter.timer != null) {
@@ -379,6 +420,7 @@ public final class ServiceHub {
             return;
         }
         entries.remove(id);
+        entry.revokeAll();
         notifyWatchers(id, null, false);
     }
 
@@ -390,7 +432,7 @@ public final class ServiceHub {
         consumed(pluginId, id);
         Entry entry = entries.get(id);
         if (entry != null) {
-            return Pending.of(entry.unconstrained());
+            return Pending.of(entry.unconstrained(handles));
         }
         Pending<Object> settled = new Pending<Object>();
         final Waiter waiter = new Waiter(pluginId, settled);

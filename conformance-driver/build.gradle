@@ -3,6 +3,8 @@
 // so nothing publishes it.
 dependencies {
     implementation project(":engine")
+    // The JVM backing of the engine's Handles seam, which is what makes a revoked call fail here.
+    implementation project(":jvm-seam")
     implementation "com.google.code.gson:gson:2.10.1"
 }
 
