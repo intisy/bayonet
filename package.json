@@ -58,9 +58,8 @@
     "node": ">=20.0.0"
   },
   "scripts": {
-    "build": "tsc && tsc -p tsconfig.generated.json && tsc --noEmit -p tsconfig.test.json && npm run schema",
+    "build": "tsc && tsc -p tsconfig.generated.json && tsc --noEmit -p tsconfig.test.json",
     "typecheck": "tsc --noEmit -p tsconfig.test.json",
-    "schema": "node scripts/emit-schema.mjs",
     "docs": "typedoc",
     "test": "npm run build && npm run typecheck:tests && vitest run",
     "prepublishOnly": "npm run build",

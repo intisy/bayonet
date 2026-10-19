@@ -37,3 +37,10 @@ def noConcurrency = tasks.register("noConcurrency") {
 }
 
 tasks.named("check") { dependsOn noConcurrency }
+
+// Both fixtures are read off disk at run time, so without declaring them the test task stays
+// UP-TO-DATE and green after the published schema is edited.
+tasks.named("test") {
+    inputs.file file("../schema/plugin.schema.json")
+    inputs.file file("../test/parity/manifests.json")
+}
