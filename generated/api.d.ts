@@ -514,6 +514,16 @@ export interface PluginManifest {
   repo?: RepoMeta;
   /** The inter-plugin contract. */
   services?: ManifestServices;
+  /**
+   * The applications this artifact is for. Absent means every application.
+   *
+   * @remarks
+   * An artifact narrows itself deliberately and is never narrowed by omission, which is
+   * what keeps this additive: every manifest written before the field existed stays loadable
+   * everywhere. A host refuses only when both sides name applications and the two sets are
+   * disjoint.
+   */
+  targets?: string[];
 }
 
 /**

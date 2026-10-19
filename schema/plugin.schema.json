@@ -50,6 +50,14 @@
       },
       "fix": "list capability ids as strings, for example [\"provider\", \"screens\"]"
     },
+    "targets": {
+      "description": "The spisor applications this artifact is for. Absent means every application.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "fix": "list the application ids this is built for, for example [\"forebay\"], or remove \"targets\" to mean every application"
+    },
     "services": {
       "description": "The inter-plugin contract: what this plugin offers other plugins, and what it asks of them.",
       "type": "object",

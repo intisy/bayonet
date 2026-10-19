@@ -61,6 +61,12 @@ public final class ManifestSchema {
         capabilities.setFix("list capability ids as strings, for example [\"provider\", \"screens\"]");
         properties.put("capabilities", capabilities);
 
+        JsonSchema targets = described(JsonSchema.ofType("array"),
+                "The spisor applications this artifact is for. Absent means every application.");
+        targets.setItems(JsonSchema.ofType("string"));
+        targets.setFix("list the application ids this is built for, for example [\"forebay\"], or remove \"targets\" to mean every application");
+        properties.put("targets", targets);
+
         properties.put("services", services());
         properties.put("commands", commands());
         properties.put("config", config());

@@ -83,6 +83,18 @@ public interface PluginManifest {
     List<String> capabilities();
 
     /**
+     * The applications this artifact is for. Absent means every application.
+     *
+     * @return the application ids this artifact targets, or absent when it is for every application
+     * @implNote An artifact narrows itself deliberately and is never narrowed by omission, which is
+     * what keeps this additive: every manifest written before the field existed stays loadable
+     * everywhere. A host refuses only when both sides name applications and the two sets are
+     * disjoint.
+     */
+    @TsOptional
+    List<String> targets();
+
+    /**
      * The inter-plugin contract.
      *
      * @return the services this plugin provides and consumes, or absent when it declares none

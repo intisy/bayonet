@@ -30,6 +30,23 @@ class ManifestValidatorTest {
     }
 
     @Test
+    void acceptsAManifestThatTargetsAnApplication() {
+        Map<String, Object> manifest = valid();
+        manifest.put("targets", Arrays.asList("forebay"));
+        List<SchemaIssue> issues = ManifestValidator.validate(manifest, WELL_KNOWN);
+        assertTrue(issues.isEmpty(), issues.toString());
+    }
+
+    @Test
+    void reportsABareStringWhereTargetsNeedsAnArray() {
+        Map<String, Object> manifest = valid();
+        manifest.put("targets", "forebay");
+        List<SchemaIssue> issues = ManifestValidator.validate(manifest, WELL_KNOWN);
+        assertEquals(1, issues.size());
+        assertEquals("targets", issues.get(0).getPath());
+    }
+
+    @Test
     void requiresAnEntryOnceCapabilitiesAreDeclared() {
         Map<String, Object> manifest = valid();
         manifest.put("capabilities", Arrays.asList("screens"));
