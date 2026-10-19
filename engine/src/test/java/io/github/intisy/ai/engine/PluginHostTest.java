@@ -84,7 +84,7 @@ class PluginHostTest {
 
     @Test
     void aCompositeHostsEveryApplicationItDeclares() {
-        PluginHost composite = new PluginHost(Arrays.asList("claude", "studio"), 2,
+        PluginHost composite = new PluginHost("claude", Arrays.asList("claude", "studio"), 2,
                 Arrays.asList("tui"));
         ManifestFacts forStudio = new ManifestFacts("studio-thing", 1, null, null,
                 Arrays.asList("studio"), MANIFEST);
@@ -96,7 +96,7 @@ class PluginHostTest {
 
     @Test
     void aCompositeStillRefusesAnApplicationItDoesNotHost() {
-        PluginHost composite = new PluginHost(Arrays.asList("claude", "studio"), 2,
+        PluginHost composite = new PluginHost("claude", Arrays.asList("claude", "studio"), 2,
                 Arrays.asList("tui"));
         ManifestFacts elsewhere = new ManifestFacts("kernel-thing", 1, null, null,
                 Arrays.asList("kernel"), MANIFEST);
@@ -109,7 +109,7 @@ class PluginHostTest {
 
     @Test
     void aHostThatDeclaresNoApplicationHostsEverything() {
-        PluginHost anyHost = new PluginHost(new ArrayList<String>(), 2, Arrays.asList("tui"));
+        PluginHost anyHost = new PluginHost("claude", new ArrayList<String>(), 2, Arrays.asList("tui"));
         ManifestFacts forStudio = new ManifestFacts("studio-thing", 1, null, null,
                 Arrays.asList("studio"), MANIFEST);
         assertNull(anyHost.supports(forStudio));

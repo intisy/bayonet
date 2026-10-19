@@ -20,6 +20,7 @@ import java.util.Set;
  */
 public final class PluginHost {
 
+    private final String app;
     private final List<String> applications;
     private final int api;
     private final List<String> surfaces;
@@ -31,57 +32,61 @@ public final class PluginHost {
     private List<String> known = new ArrayList<String>();
 
     /**
-     * Creates a single-application host whose {@link ServiceHub} never expires a pending want; see the four-argument constructor.
+     * Creates a host that hosts the one application it is named for, whose {@link ServiceHub} never expires a pending want.
      *
-     * @param app the id of the app this host belongs to; blank or {@code (String) null} hosts every application
+     * @param app the HOME this host is loaded into, which is also taken as the one application it hosts
      * @param api the api version this host implements
      * @param surfaces the UI surface ids this host renders
      */
     public PluginHost(String app, int api, List<String> surfaces) {
-        this(app, api, surfaces, Scheduler.NEVER);
+        this(app, null, api, surfaces, Scheduler.NEVER);
     }
 
     /**
-     * Creates a single-application host.
+     * Creates a host that hosts the one application it is named for.
      *
-     * @param app the id of the app this host belongs to; blank or {@code (String) null} hosts every application
+     * @param app the HOME this host is loaded into, which is also taken as the one application it hosts
      * @param api the api version this host implements
      * @param surfaces the UI surface ids this host renders
      * @param scheduler the timer source used to expire an unmet service want
-     * @implNote An absent app becomes an EMPTY application set rather than a set holding one useless
-     * element, because an empty set means "every application" while a set holding null or {@code ""}
-     * would make the overlap test in {@link #supports(ManifestFacts)} answer by accident: a blank id
-     * matches no target, so a host that had really declared nothing would refuse every targeted
-     * artifact.
-     * <p>A literal {@code null} here is ambiguous against the {@link List} overload and must be cast.
      */
     public PluginHost(String app, int api, List<String> surfaces, Scheduler scheduler) {
-        this(app == null || app.isEmpty() ? new ArrayList<String>() : Collections.singletonList(app),
-                api, surfaces, scheduler);
+        this(app, null, api, surfaces, scheduler);
     }
 
     /**
-     * Creates a host whose {@link ServiceHub} never expires a pending want; see the four-argument constructor.
+     * Creates a host whose {@link ServiceHub} never expires a pending want; see the five-argument constructor.
      *
-     * @param applications the ids of the apps this host hosts; null or empty means every application
+     * @param app the HOME this host is loaded into
+     * @param applications the spisor applications this host hosts; null or empty means every application
      * @param api the api version this host implements
      * @param surfaces the UI surface ids this host renders
      */
-    public PluginHost(List<String> applications, int api, List<String> surfaces) {
-        this(applications, api, surfaces, Scheduler.NEVER);
+    public PluginHost(String app, List<String> applications, int api, List<String> surfaces) {
+        this(app, applications, api, surfaces, Scheduler.NEVER);
     }
 
     /**
-     * @param applications the ids of the apps this host hosts; null or empty means every application
+     * @param app the HOME this host is loaded into
+     * @param applications the spisor applications this host hosts; null or empty means every application
      * @param api the api version this host implements
      * @param surfaces the UI surface ids this host renders
      * @param scheduler the timer source used to expire an unmet service want
-     * @implNote The application side is a SET because a composite hosting several spisor
-     * applications has no single id, and making it one answers that with the overlap rule already
-     * written rather than a second rule.
+     * @implNote **{@code app} and {@code applications} are different things and conflating them is
+     * the trap this signature exists to prevent.** {@code app} is the home a host is loaded into,
+     * {@code claude} or {@code opencode} or {@code forebay}, and it is what {@link #getApp()}
+     * publishes on the descriptor for every plugin to read. {@code applications} is the PRODUCT, so
+     * one product loaded into four homes declares the same single application in all four, and it is
+     * the only thing an artifact's targeting is matched against.
+     * <p>The application side is a SET because a composite hosting several products has no single id.
+     * An empty set means every application. When {@code applications} is null the app is taken as
+     * the one application hosted, which is what every caller written before the distinction existed
+     * meant; a blank app then yields an EMPTY set rather than a set holding {@code ""}, because a
+     * blank id matches no target and would otherwise refuse every targeted artifact.
      */
-    public PluginHost(List<String> applications, int api, List<String> surfaces, Scheduler scheduler) {
-        this.applications = applications == null ? new ArrayList<String>() : new ArrayList<String>(applications);
+    public PluginHost(String app, List<String> applications, int api, List<String> surfaces, Scheduler scheduler) {
+        this.app = app;
+        this.applications = applicationsOf(app, applications);
         this.api = api;
         this.surfaces = surfaces == null ? new ArrayList<String>() : new ArrayList<String>(surfaces);
         this.hub = new ServiceHub(scheduler, new ServiceHub.Recorder() {
@@ -97,17 +102,19 @@ public final class PluginHost {
         });
     }
 
-    /**
-     * @return the id of the first app this host hosts, or null when it hosts every application
-     * @deprecated a host may host several applications and there is then no single answer.
-     *     Call {@link #getApplications()}.
-     */
-    @Deprecated
-    public String getApp() {
-        return applications.isEmpty() ? null : applications.get(0);
+    private static List<String> applicationsOf(String app, List<String> declared) {
+        if (declared != null) {
+            return new ArrayList<String>(declared);
+        }
+        return app == null || app.isEmpty() ? new ArrayList<String>() : Collections.singletonList(app);
     }
 
-    /** @return the ids of the apps this host hosts, or empty when it hosts every application */
+    /** @return the home this host is loaded into, as the descriptor publishes it */
+    public String getApp() {
+        return app;
+    }
+
+    /** @return the spisor applications this host hosts, or empty when it hosts every application */
     public List<String> getApplications() {
         return Collections.unmodifiableList(applications);
     }

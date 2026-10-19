@@ -81,6 +81,24 @@ describe("startPlugins", () => {
     expect(loaded.host.descriptor).toEqual({ app: "test", api: 2, surfaces: [] });
   });
 
+  it("quarantines a plugin built for an application this host does not host", async () => {
+    const scan = scanOf({ manifest: manifest("demo", { targets: ["studio"] }), module: settingsPlugin([], "demo") });
+    const loaded = await startPlugins(options(scan, { applications: ["forebay"] }));
+
+    expect(loaded.started).toEqual([]);
+    expect(loaded.quarantined.map((error) => error.pluginId)).toEqual(["demo"]);
+    expect(loaded.quarantined[0]?.detail).toBe("is built for studio, and this host hosts forebay");
+  });
+
+  it("starts a plugin targeting the application this host hosts, whatever home it sits in", async () => {
+    const scan = scanOf({ manifest: manifest("demo", { targets: ["forebay"] }), module: settingsPlugin([], "demo") });
+    const loaded = await startPlugins(options(scan, { app: "claude", applications: ["forebay"] }));
+
+    expect(loaded.started).toEqual(["demo"]);
+    expect(loaded.quarantined).toEqual([]);
+    expect(loaded.host.descriptor.app).toBe("claude");
+  });
+
   it("activates a service provider before its consumer", async () => {
     const order: string[] = [];
     const scan = scanOf(

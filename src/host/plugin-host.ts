@@ -20,8 +20,18 @@ export const DEFAULT_DEACTIVATE_TIMEOUT_MS = 5000;
 
 /** What the host needs from whoever starts it. */
 export interface PluginHostOptions {
-  /** The app id plugins see on the host descriptor. */
+  /** The app id plugins see on the host descriptor, which is the HOME this host is loaded into. */
   app: string;
+  /**
+   * The spisor applications this host hosts, which is what an artifact's `targets` is matched against.
+   *
+   * @remarks
+   * NOT the same thing as {@link app}, and conflating them is the trap this field exists to avoid.
+   * `app` names the home a host is loaded into, `claude` or `opencode` or `forebay`; this names the
+   * product, so one product loaded into four homes declares the same single application in all four.
+   * Absent or empty hosts every application, which is what keeps the field additive.
+   */
+  applications?: string[];
   /** The home's plugin directory, normally `<home>/plugin`. */
   pluginDir: string;
   /** Surface ids this host renders. */
@@ -232,6 +242,7 @@ export async function startPlugins(options: PluginHostOptions): Promise<LoadedHo
 
   const host = createPluginHost({
     app: options.app,
+    applications: options.applications ?? [],
     surfaces: options.surfaces ?? [],
     vocabulary: ids(options.vocabulary),
     wellKnownServices: ids(options.wellKnownServices),

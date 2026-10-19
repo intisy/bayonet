@@ -92,19 +92,15 @@ final class JsPluginHost implements JSObject {
     }
 
     /**
-     * @implNote {@code applications} is read first and the scalar {@code app} is the fallback, so
-     * every caller written before a host could host more than one keeps working unchanged. The
-     * fallback goes through the String constructor rather than wrapping the value in a list here,
-     * so the rule that an absent or blank app means "every application" lives in ONE place. Building
-     * the list here instead let {@code app: ""} through as an application literally named "", which
-     * then matched no target and refused every targeted artifact.
+     * @implNote An absent or empty {@code applications} passes null rather than the empty list, so
+     * the engine takes the home as the one application hosted: that is what every caller written
+     * before the two were distinguished meant, and passing the empty list instead would silently
+     * widen such a host to hosting EVERY application.
      */
     private static PluginHost hostOf(Object tree, int api, List<String> surfaces) {
         List<String> applications = strings(member(tree, "applications"));
-        if (!applications.isEmpty()) {
-            return new PluginHost(applications, api, surfaces, new JsScheduler());
-        }
-        return new PluginHost(text(tree, "app"), api, surfaces, new JsScheduler());
+        return new PluginHost(text(tree, "app"), applications.isEmpty() ? null : applications,
+                api, surfaces, new JsScheduler());
     }
 
     static JsPluginHost build(final PluginHost host) {
