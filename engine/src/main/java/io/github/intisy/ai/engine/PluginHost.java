@@ -20,7 +20,7 @@ import java.util.Set;
  */
 public final class PluginHost {
 
-    private final String app;
+    private final List<String> applications;
     private final int api;
     private final List<String> surfaces;
     private final PluginLedger ledger = new PluginLedger();
@@ -31,9 +31,9 @@ public final class PluginHost {
     private List<String> known = new ArrayList<String>();
 
     /**
-     * Creates a host whose {@link ServiceHub} never expires a pending want; see the four-argument constructor.
+     * Creates a single-application host whose {@link ServiceHub} never expires a pending want; see the four-argument constructor.
      *
-     * @param app the id of the app this host belongs to
+     * @param app the id of the app this host belongs to, or null for a host that hosts every application
      * @param api the api version this host implements
      * @param surfaces the UI surface ids this host renders
      */
@@ -42,13 +42,42 @@ public final class PluginHost {
     }
 
     /**
-     * @param app the id of the app this host belongs to
+     * Creates a single-application host.
+     *
+     * @param app the id of the app this host belongs to, or null for a host that hosts every application
      * @param api the api version this host implements
      * @param surfaces the UI surface ids this host renders
      * @param scheduler the timer source used to expire an unmet service want
+     * @implNote A null app becomes an EMPTY application set rather than a set holding null, because
+     * an empty set means "every application" while a set holding null would make the overlap test in
+     * {@link #supports(ManifestFacts)} answer by accident.
      */
     public PluginHost(String app, int api, List<String> surfaces, Scheduler scheduler) {
-        this.app = app;
+        this(app == null ? new ArrayList<String>() : Collections.singletonList(app), api, surfaces, scheduler);
+    }
+
+    /**
+     * Creates a host whose {@link ServiceHub} never expires a pending want; see the four-argument constructor.
+     *
+     * @param applications the ids of the apps this host hosts; null or empty means every application
+     * @param api the api version this host implements
+     * @param surfaces the UI surface ids this host renders
+     */
+    public PluginHost(List<String> applications, int api, List<String> surfaces) {
+        this(applications, api, surfaces, Scheduler.NEVER);
+    }
+
+    /**
+     * @param applications the ids of the apps this host hosts; null or empty means every application
+     * @param api the api version this host implements
+     * @param surfaces the UI surface ids this host renders
+     * @param scheduler the timer source used to expire an unmet service want
+     * @implNote The application side is a SET because a composite hosting several spisor
+     * applications has no single id, and making it one answers that with the overlap rule already
+     * written rather than a second rule.
+     */
+    public PluginHost(List<String> applications, int api, List<String> surfaces, Scheduler scheduler) {
+        this.applications = applications == null ? new ArrayList<String>() : new ArrayList<String>(applications);
         this.api = api;
         this.surfaces = surfaces == null ? new ArrayList<String>() : new ArrayList<String>(surfaces);
         this.hub = new ServiceHub(scheduler, new ServiceHub.Recorder() {
@@ -64,9 +93,19 @@ public final class PluginHost {
         });
     }
 
-    /** @return the id of the app this host belongs to */
+    /**
+     * @return the id of the first app this host hosts, or null when it hosts every application
+     * @deprecated a host may host several applications and there is then no single answer.
+     *     Call {@link #getApplications()}.
+     */
+    @Deprecated
     public String getApp() {
-        return app;
+        return applications.isEmpty() ? null : applications.get(0);
+    }
+
+    /** @return the ids of the apps this host hosts, or empty when it hosts every application */
+    public List<String> getApplications() {
+        return Collections.unmodifiableList(applications);
     }
 
     /** @return the api version this host implements */
@@ -103,12 +142,40 @@ public final class PluginHost {
     }
 
     /**
+     * Null when this host can load the artifact, or the failure explaining why it cannot.
+     *
+     * @param facts the artifact's manifest facts
+     * @return null when this host can load it, otherwise the failure explaining the mismatch
+     * @implNote The application is checked before the api floor, which is the order of usefulness
+     * to whoever reads the error: being built for another product is a more useful sentence than
+     * being built for a newer api of a product it was never for. Both sides are sets and the test
+     * is symmetric overlap, so a composite hosting several applications loads a plugin targeting
+     * any of them; an empty set on EITHER side means "any", which is what keeps the field additive
+     * for every artifact and every host that predates it.
+     * Language is deliberately not an axis here. A host of another language does not refuse a
+     * plugin, it reaches it through the compatibility layer.
+     */
+    public PluginException supports(ManifestFacts facts) {
+        List<String> targets = facts.getTargets();
+        if (!targets.isEmpty() && !applications.isEmpty() && Collections.disjoint(targets, applications)) {
+            return new PluginException(facts.getId(),
+                    "is built for " + join(targets) + ", and this host hosts " + join(applications),
+                    "install it in " + targets.get(0) + ", or add \"" + applications.get(0)
+                            + "\" to \"targets\" in plugin.json");
+        }
+        return supports(facts.getId(), facts.getApi());
+    }
+
+    /**
      * Null when this host can load the plugin, or the failure explaining why it cannot.
      *
      * @param pluginId the plugin's id, used only to build the failure message
      * @param pluginApi the api version the plugin declares it needs
      * @return null when {@code pluginApi} is at or below this host's api, otherwise the failure explaining the mismatch
+     * @deprecated checks the api floor alone and cannot see which applications an artifact is for.
+     *     Call {@link #supports(ManifestFacts)}, which checks both.
      */
+    @Deprecated
     public PluginException supports(String pluginId, int pluginApi) {
         if (pluginApi <= api) {
             return null;

@@ -46,6 +46,82 @@ class PluginHostTest {
     }
 
     @Test
+    void refusesAPluginBuiltForAnotherApplication() {
+        PluginHost claude = new PluginHost("claude", 2, Arrays.asList("tui"));
+        ManifestFacts elsewhere = new ManifestFacts("studio-thing", 1, null, null,
+                Arrays.asList("studio"), MANIFEST);
+        PluginException refusal = claude.supports(elsewhere);
+        assertNotNull(refusal);
+        assertTrue(refusal.getDetail().contains("studio"));
+        assertTrue(refusal.getDetail().contains("claude"));
+        assertNotNull(refusal.getFix());
+    }
+
+    @Test
+    void acceptsAPluginThatNamesThisApplicationAmongOthers() {
+        PluginHost claude = new PluginHost("claude", 2, Arrays.asList("tui"));
+        ManifestFacts both = new ManifestFacts("shared-thing", 1, null, null,
+                Arrays.asList("studio", "claude"), MANIFEST);
+        assertNull(claude.supports(both));
+    }
+
+    @Test
+    void acceptsAPluginThatTargetsNothing() {
+        PluginHost claude = new PluginHost("claude", 2, Arrays.asList("tui"));
+        ManifestFacts anywhere = new ManifestFacts("old-thing", 1, null, null, MANIFEST);
+        assertNull(claude.supports(anywhere));
+    }
+
+    @Test
+    void checksTheApplicationBeforeTheApiFloor() {
+        PluginHost claude = new PluginHost("claude", 2, Arrays.asList("tui"));
+        ManifestFacts wrongOnBoth = new ManifestFacts("studio-thing", 99, null, null,
+                Arrays.asList("studio"), MANIFEST);
+        PluginException refusal = claude.supports(wrongOnBoth);
+        assertNotNull(refusal);
+        assertTrue(refusal.getDetail().contains("studio"));
+    }
+
+    @Test
+    void aCompositeHostsEveryApplicationItDeclares() {
+        PluginHost composite = new PluginHost(Arrays.asList("claude", "studio"), 2,
+                Arrays.asList("tui"));
+        ManifestFacts forStudio = new ManifestFacts("studio-thing", 1, null, null,
+                Arrays.asList("studio"), MANIFEST);
+        ManifestFacts forClaude = new ManifestFacts("claude-thing", 1, null, null,
+                Arrays.asList("claude"), MANIFEST);
+        assertNull(composite.supports(forStudio));
+        assertNull(composite.supports(forClaude));
+    }
+
+    @Test
+    void aCompositeStillRefusesAnApplicationItDoesNotHost() {
+        PluginHost composite = new PluginHost(Arrays.asList("claude", "studio"), 2,
+                Arrays.asList("tui"));
+        ManifestFacts elsewhere = new ManifestFacts("kernel-thing", 1, null, null,
+                Arrays.asList("kernel"), MANIFEST);
+        PluginException refusal = composite.supports(elsewhere);
+        assertNotNull(refusal);
+        assertTrue(refusal.getDetail().contains("kernel"));
+        assertTrue(refusal.getDetail().contains("claude"));
+        assertTrue(refusal.getDetail().contains("studio"));
+    }
+
+    @Test
+    void aHostThatDeclaresNoApplicationHostsEverything() {
+        PluginHost anyHost = new PluginHost(new ArrayList<String>(), 2, Arrays.asList("tui"));
+        ManifestFacts forStudio = new ManifestFacts("studio-thing", 1, null, null,
+                Arrays.asList("studio"), MANIFEST);
+        assertNull(anyHost.supports(forStudio));
+    }
+
+    @Test
+    void theScalarConstructorIsTheOneApplicationCase() {
+        PluginHost claude = new PluginHost("claude", 2, Arrays.asList("tui"));
+        assertEquals(Arrays.asList("claude"), claude.getApplications());
+    }
+
+    @Test
     void handsAPluginASessionCarryingItsManifestAndItsFencedRegistry() {
         PluginHost host = host();
         final PluginSession session = host.sessionFor(screens(), new RecordingBus());
