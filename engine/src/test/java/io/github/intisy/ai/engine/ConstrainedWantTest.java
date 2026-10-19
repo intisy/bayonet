@@ -111,6 +111,37 @@ class ConstrainedWantTest {
         assertEquals(1, provider.reads);
     }
 
+    /**
+     * The overlay rule where it actually bites. The empty-map case above cannot distinguish a per
+     * key overlay from a replacement, because merging an empty map changes nothing either way: only
+     * a live map that reports ONE key while the declaration claims another can.
+     */
+    @Test
+    void aLiveAttributeDoesNotEraseTheOtherAdvertisedOnes() {
+        ManualScheduler scheduler = new ManualScheduler();
+        ServiceHub hub = new ServiceHub(scheduler, null);
+        hub.wellKnown(Arrays.asList("storage.object"));
+        hub.constraintVocabulary(ConstraintVocabulary.of(Arrays.asList(
+                new ConstraintVocabulary.Entry("minReplicas", "maxReplicas", ConstraintVocabulary.Bound.LOWER),
+                new ConstraintVocabulary.Entry("maxLatencyMs", "latencyMs", ConstraintVocabulary.Bound.UPPER))));
+        Map<String, Double> advertised = new LinkedHashMap<String, Double>();
+        advertised.put("maxReplicas", Double.valueOf(3));
+        advertised.put("latencyMs", Double.valueOf(10));
+        hub.forPlugin("store").register("storage.object",
+                new ScriptedProvider(Arrays.asList(numbers("maxReplicas", 5)), false), advertised);
+
+        Map<String, Object> declared = new LinkedHashMap<String, Object>();
+        declared.put("id", "storage.object");
+        declared.put("degradable", Boolean.FALSE);
+        Map<String, Double> constraints = new LinkedHashMap<String, Double>();
+        constraints.put("minReplicas", Double.valueOf(3));
+        constraints.put("maxLatencyMs", Double.valueOf(50));
+        declared.put("constraints", constraints);
+
+        Settled settled = resolve(hub, scheduler, ServiceRequirement.of(declared), Budget.of(2000, 1000));
+        assertEquals("the service", settled.value, settled.failure == null ? "" : settled.failure.getDetail());
+    }
+
     @Test
     void refusesWhenNeverSatisfiedAndNotDegradable() {
         ManualScheduler scheduler = new ManualScheduler();
