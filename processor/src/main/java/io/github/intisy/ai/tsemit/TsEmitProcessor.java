@@ -362,8 +362,9 @@ public class TsEmitProcessor extends AbstractProcessor {
                 }
                 arms.append(union.value()[i]);
             }
+            String joined = union.element() ? "(" + arms + ")[]" : arms.toString();
             boolean promised = union.async() || isStage(method.getReturnType());
-            return promised ? "Promise<" + arms + ">" : arms.toString();
+            return promised ? "Promise<" + joined + ">" : joined;
         }
         if (method.getAnnotation(TsMaybeAsync.class) != null) {
             String emitted = tsType(method.getReturnType());

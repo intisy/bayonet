@@ -45,8 +45,8 @@ public final class ManifestValidator {
         issues.addAll(entryIssues(value));
         issues.addAll(providedServiceIssues(value, wellKnownServices));
         issues.addAll(duplicateIssues("capabilities", listAt(value, "capabilities")));
-        issues.addAll(duplicateIssues("services.provides", listAt(mapAt(value, "services"), "provides")));
-        issues.addAll(duplicateIssues("services.consumes", listAt(mapAt(value, "services"), "consumes")));
+        issues.addAll(duplicateIssues("services.provides", serviceIds(listAt(mapAt(value, "services"), "provides"))));
+        issues.addAll(duplicateIssues("services.consumes", serviceIds(listAt(mapAt(value, "services"), "consumes"))));
         issues.addAll(duplicateIssues("permissions", listAt(value, "permissions")));
         return issues;
     }
@@ -110,7 +110,7 @@ public final class ManifestValidator {
             return issues;
         }
         for (int index = 0; index < provides.size(); index++) {
-            String serviceId = String.valueOf(provides.get(index));
+            String serviceId = ServiceRequirement.idOf(provides.get(index));
             if (mayRegister(pluginId, serviceId, wellKnownServices)) {
                 continue;
             }
@@ -136,6 +136,18 @@ public final class ManifestValidator {
             return false;
         }
         return serviceId.substring(0, separator).equals(pluginId);
+    }
+
+    /** @implNote The two forms name the same service, so a list mixing them is deduplicated by id. */
+    private static List<Object> serviceIds(List<Object> declarations) {
+        if (declarations == null) {
+            return null;
+        }
+        List<Object> ids = new ArrayList<Object>();
+        for (Object declaration : declarations) {
+            ids.add(ServiceRequirement.idOf(declaration));
+        }
+        return ids;
     }
 
     private static List<SchemaIssue> duplicateIssues(String path, List<Object> values) {

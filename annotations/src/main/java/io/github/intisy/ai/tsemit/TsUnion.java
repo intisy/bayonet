@@ -20,6 +20,18 @@ public @interface TsUnion {
     String[] value();
 
     /**
+     * Join the arms as the ELEMENT type of an array rather than as the whole return type.
+     *
+     * @implNote For a list whose entries may each be written either way, which is how a manifest
+     * field accepts both a bare id and the object form that says more about it. Without this the
+     * only emittable shapes are {@code string[] | Thing[]}, which forbids the mixed list the schema
+     * allows, and a verbatim {@link TsRaw}, which stops the Java being the source.
+     *
+     * @return true to emit {@code (a | b)[]}, false to emit {@code a | b}
+     */
+    boolean element() default false;
+
+    /**
      * Wrap the union in a promise even though the Java return is synchronous.
      *
      * @implNote For a contract whose Java side is deliberately sync because it must transpile, while

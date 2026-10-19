@@ -66,15 +66,75 @@
           "description": "Service ids this plugin registers, each namespaced by its own id or a well-known bare id.",
           "type": "array",
           "items": {
-            "type": "string"
-          }
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "description": "One service this plugin registers, with what it advertises.",
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "description": "The service id this plugin registers.",
+                    "type": "string"
+                  },
+                  "attributes": {
+                    "description": "What this service claims, keyed by attribute name, until the live service reports its own.",
+                    "type": "object",
+                    "additionalProperties": {
+                      "description": "One advertised value, in the units its attribute name names.",
+                      "type": "number"
+                    }
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            ]
+          },
+          "fix": "list service ids as strings, for example [\"identity:accounts\"], or objects carrying \"id\" and \"attributes\""
         },
         "consumes": {
-          "description": "Service ids this plugin asks for.",
+          "description": "Service ids this plugin asks for. A bare string asks for it optionally, which is what every manifest written before this object form meant.",
           "type": "array",
           "items": {
-            "type": "string"
-          }
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "description": "One service this plugin asks for, and what its absence or its shortfall costs.",
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "description": "The service id this plugin asks for.",
+                    "type": "string"
+                  },
+                  "optional": {
+                    "description": "Whether this plugin still starts when nothing provides the service. Absent means true, which is what a bare string means.",
+                    "type": "boolean"
+                  },
+                  "degradable": {
+                    "description": "Whether this plugin accepts a service that never satisfies its constraints once the budget is spent. Absent means false, and it never excuses an absence.",
+                    "type": "boolean"
+                  },
+                  "constraints": {
+                    "description": "What this plugin needs of the service, keyed by constraint name, compared against what the service advertises.",
+                    "type": "object",
+                    "additionalProperties": {
+                      "description": "One required value, in the units its constraint name names.",
+                      "type": "number"
+                    }
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            ]
+          },
+          "fix": "list service ids as strings, for example [\"accounts\"], or objects carrying \"id\" and what its absence costs"
         }
       }
     },

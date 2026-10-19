@@ -171,4 +171,80 @@ class ManifestValidatorTest {
         Map<String, Object> manifest = valid();
         assertEquals(manifest, ManifestValidator.require(manifest, WELL_KNOWN));
     }
+
+    private static Map<String, Object> servicesOf(Object provides, Object consumes) {
+        Map<String, Object> services = new HashMap<String, Object>();
+        if (provides != null) {
+            services.put("provides", provides);
+        }
+        if (consumes != null) {
+            services.put("consumes", consumes);
+        }
+        Map<String, Object> manifest = valid();
+        manifest.put("services", services);
+        return manifest;
+    }
+
+    private static Map<String, Object> requirement(String id, Object optional) {
+        Map<String, Object> required = new HashMap<String, Object>();
+        required.put("id", id);
+        if (optional != null) {
+            required.put("optional", optional);
+        }
+        return required;
+    }
+
+    @Test
+    void acceptsBareStringsWhereServicesTakeThem() {
+        Map<String, Object> manifest = servicesOf(Arrays.asList("config-ledger:entries"), Arrays.asList("accounts"));
+        List<SchemaIssue> issues = ManifestValidator.validate(manifest, WELL_KNOWN);
+        assertTrue(issues.isEmpty(), issues.toString());
+    }
+
+    @Test
+    void acceptsTheObjectFormOnBothSides() {
+        Map<String, Object> offered = new HashMap<String, Object>();
+        offered.put("id", "config-ledger:entries");
+        Map<String, Double> attributes = new HashMap<String, Double>();
+        attributes.put("maxReplicas", Double.valueOf(3));
+        offered.put("attributes", attributes);
+        Map<String, Object> manifest = servicesOf(Arrays.asList(offered),
+                Arrays.asList(requirement("accounts", Boolean.FALSE)));
+        List<SchemaIssue> issues = ManifestValidator.validate(manifest, WELL_KNOWN);
+        assertTrue(issues.isEmpty(), issues.toString());
+    }
+
+    @Test
+    void reportsAWrongTypeInsideTheObjectForm() {
+        Map<String, Object> manifest = servicesOf(null, Arrays.asList(requirement("accounts", "yes")));
+        List<SchemaIssue> issues = ManifestValidator.validate(manifest, WELL_KNOWN);
+        assertEquals(1, issues.size(), issues.toString());
+        assertEquals("services.consumes[0].optional", issues.get(0).getPath());
+    }
+
+    @Test
+    void reportsAnEntryThatIsNeitherAnIdNorAnObject() {
+        Map<String, Object> manifest = servicesOf(null, Arrays.asList(Integer.valueOf(7)));
+        List<SchemaIssue> issues = ManifestValidator.validate(manifest, WELL_KNOWN);
+        assertEquals(1, issues.size(), issues.toString());
+        assertEquals("services.consumes[0]", issues.get(0).getPath());
+    }
+
+    @Test
+    void holdsTheObjectFormOfProvidesToTheSameNamespacing() {
+        Map<String, Object> manifest = servicesOf(Arrays.asList(requirement("squatted", null)), null);
+        List<SchemaIssue> issues = ManifestValidator.validate(manifest, WELL_KNOWN);
+        assertEquals(1, issues.size(), issues.toString());
+        assertEquals("services.provides[0]", issues.get(0).getPath());
+        assertTrue(issues.get(0).getMessage().contains("\"squatted\""), issues.get(0).getMessage());
+    }
+
+    @Test
+    void seesADuplicateAcrossTheTwoForms() {
+        Map<String, Object> manifest = servicesOf(null,
+                Arrays.asList("accounts", requirement("accounts", null)));
+        List<SchemaIssue> issues = ManifestValidator.validate(manifest, WELL_KNOWN);
+        assertEquals(1, issues.size(), issues.toString());
+        assertEquals("services.consumes[1]", issues.get(0).getPath());
+    }
 }

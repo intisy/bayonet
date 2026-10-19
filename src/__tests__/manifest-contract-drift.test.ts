@@ -18,11 +18,17 @@ interface SchemaNode {
   type?: string;
   properties?: Record<string, SchemaNode>;
   items?: SchemaNode;
+  oneOf?: SchemaNode[];
   additionalProperties?: SchemaNode;
 }
 
+// The object form of `provides` and `consumes` lives in a union arm. Resolving an array only
+// through `items` stops at a node with no `properties` of its own, which would pair the fields
+// inside the arm with no interface and make the walk below skip the path: every assertion here
+// would stay green over a block nothing checks.
 function shapeOf(node: SchemaNode | undefined): SchemaNode | undefined {
-  return node?.type === "array" ? node.items : node;
+  const unwrapped = node?.type === "array" ? node.items : node;
+  return unwrapped?.oneOf ? unwrapped.oneOf.find((arm) => arm.properties) : unwrapped;
 }
 
 function schemaFields(node: SchemaNode | undefined): string[] {
@@ -47,6 +53,8 @@ function nodeAt(path: string): SchemaNode | undefined {
 // nothing in either connects the two, which is the whole reason this test exists.
 const NESTED: Array<{ field: string; iface: string }> = [
   { field: "services", iface: "ManifestServices" },
+  { field: "services.provides", iface: "ManifestOffer" },
+  { field: "services.consumes", iface: "ManifestRequirement" },
   { field: "commands", iface: "ManifestCommand" },
   { field: "config", iface: "ManifestConfig" },
   { field: "data", iface: "ManifestData" },

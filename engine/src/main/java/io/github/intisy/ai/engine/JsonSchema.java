@@ -1,5 +1,6 @@
 package io.github.intisy.ai.engine;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +16,7 @@ import java.util.Map;
 public final class JsonSchema {
 
     private final String type;
+    private List<JsonSchema> oneOf;
     private String schemaDraft;
     private String schemaId;
     private String title;
@@ -40,9 +42,32 @@ public final class JsonSchema {
         return new JsonSchema(type);
     }
 
+    /**
+     * A value that matches any one of several alternatives, which is how a field accepts both a
+     * bare id and the object form that says more about it.
+     *
+     * @param alternatives the schemas a value may match, in the order they are reported
+     * @return a new schema carrying no type of its own, matching a value that matches any alternative
+     */
+    public static JsonSchema oneOf(List<JsonSchema> alternatives) {
+        JsonSchema schema = new JsonSchema(null);
+        schema.oneOf = alternatives;
+        return schema;
+    }
+
     /** @return the JSON Schema type keyword this schema checks against */
     public String getType() {
         return type;
+    }
+
+    /** @return the alternatives a value may match, or null when this schema is not a union */
+    public List<JsonSchema> getOneOf() {
+        return oneOf;
+    }
+
+    /** @param value the alternatives a value may match */
+    public void setOneOf(List<JsonSchema> value) {
+        this.oneOf = value;
     }
 
     /** @return this schema's title, or null when unset */
@@ -185,11 +210,8 @@ public final class JsonSchema {
      * This schema as the plain tree a JSON writer or a JavaScript caller consumes.
      *
      * @return a map of JSON Schema keyword names to their values, omitting every keyword left unset
-     * @implNote One key order for every object, taken from this class's field order, because the
-     * published file is regenerated and compared as text. Per-object hand-chosen orders cannot
-     * survive a serializer, so pinning one order here is what makes the comparison stable. Absent
-     * values are omitted rather than written as null: a null keyword is not the same as an unstated
-     * one to a JSON Schema validator.
+     * @implNote Absent values are omitted rather than written as null: a null keyword is not the
+     * same as an unstated one to a JSON Schema validator.
      */
     public Map<String, Object> toTree() {
         Map<String, Object> out = new LinkedHashMap<String, Object>();
@@ -198,6 +220,13 @@ public final class JsonSchema {
         put(out, "title", title);
         put(out, "description", description);
         put(out, "type", type);
+        if (oneOf != null) {
+            List<Object> alternatives = new ArrayList<Object>();
+            for (JsonSchema alternative : oneOf) {
+                alternatives.add(alternative.toTree());
+            }
+            out.put("oneOf", alternatives);
+        }
         if (properties != null) {
             Map<String, Object> nested = new LinkedHashMap<String, Object>();
             for (Map.Entry<String, JsonSchema> property : properties.entrySet()) {

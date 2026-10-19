@@ -576,6 +576,28 @@ export interface HostDescriptor {
 }
 
 /**
+ * What a plugin offers other plugins, and what it asks of them.
+ *
+ * @remarks
+ * Each entry may be written either way, as the bare service id or as the object form that
+ * says more about it, so the Java element type is `Object` and the emitted one is the union.
+ * Every manifest written before the object form stays valid and keeps its meaning, which is what
+ * makes the widening additive rather than a new version of the vocabulary.
+ */
+export interface ManifestServices {
+  /**
+   * Services this plugin asks for, used for activation ordering and for what an absence costs,
+   * written as bare ids or as {@link ManifestRequirement} objects.
+   */
+  consumes?: (string | ManifestRequirement)[];
+  /**
+   * Services this plugin registers, each namespaced by its own id or a well-known bare id,
+   * written as bare ids or as {@link ManifestOffer} objects.
+   */
+  provides?: (string | ManifestOffer)[];
+}
+
+/**
  * What a plugin's entry module exports.
  *
  * @remarks
@@ -793,6 +815,35 @@ export interface PluginConfig {
   set(key: string, value: unknown): Promise<void>;
 }
 
+/** One service a plugin asks for, and what its absence or its shortfall costs. */
+export interface ManifestRequirement {
+  /**
+   * What this plugin needs of the service, keyed by constraint name, compared against what the
+   * service advertises.
+   */
+  constraints?: Record<string, number>;
+  /**
+   * Whether this plugin accepts a service that never satisfies its constraints once the budget is
+   * spent. Absent means false, and it never excuses an absence.
+   */
+  degradable?: boolean;
+  /** The service id this plugin asks for. */
+  id: string;
+  /**
+   * Whether this plugin still starts when nothing provides the service. Absent means true, which
+   * is what writing the bare id means.
+   */
+  optional?: boolean;
+}
+
+/** One service a plugin registers, with what it claims before it is running to answer for itself. */
+export interface ManifestOffer {
+  /** What this service claims, keyed by attribute name, until the live service reports its own. */
+  attributes?: Record<string, number>;
+  /** The service id this plugin registers. */
+  id: string;
+}
+
 /** Repository metadata, from which the GitHub description and topic set are derived. */
 export interface RepoMeta {
   /** The single category topic, for example `core-library` or `dashboard`. */
@@ -817,14 +868,6 @@ export interface RepoMeta {
 export interface AppUsage {
   /** Format ids, each of which a consumer maps to a parser of its own. */
   formats: string[];
-}
-
-/** What a plugin offers other plugins, and what it asks of them. */
-export interface ManifestServices {
-  /** Service ids this plugin asks for, used for activation ordering. */
-  consumes?: string[];
-  /** Service ids this plugin registers, each namespaced by its own id or a well-known bare id. */
-  provides?: string[];
 }
 
 /** What this plugin contributes to a host's catalog of installable things. */

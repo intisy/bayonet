@@ -95,15 +95,56 @@ public final class ManifestSchema {
         Map<String, JsonSchema> properties = new LinkedHashMap<String, JsonSchema>();
         JsonSchema provides = described(JsonSchema.ofType("array"),
                 "Service ids this plugin registers, each namespaced by its own id or a well-known bare id.");
-        provides.setItems(JsonSchema.ofType("string"));
+        provides.setItems(JsonSchema.oneOf(Arrays.asList(JsonSchema.ofType("string"), offered())));
+        provides.setFix("list service ids as strings, for example [\"identity:accounts\"], or objects carrying \"id\" and \"attributes\"");
         properties.put("provides", provides);
-        JsonSchema consumes = described(JsonSchema.ofType("array"), "Service ids this plugin asks for.");
-        consumes.setItems(JsonSchema.ofType("string"));
+        JsonSchema consumes = described(JsonSchema.ofType("array"), "Service ids this plugin asks for."
+                + " A bare string asks for it optionally, which is what every manifest written before this object form meant.");
+        consumes.setItems(JsonSchema.oneOf(Arrays.asList(JsonSchema.ofType("string"), required())));
+        consumes.setFix("list service ids as strings, for example [\"accounts\"], or objects carrying \"id\" and what its absence costs");
         properties.put("consumes", consumes);
         JsonSchema services = described(JsonSchema.ofType("object"),
                 "The inter-plugin contract: what this plugin offers other plugins, and what it asks of them.");
         services.setProperties(properties);
         return services;
+    }
+
+    private static JsonSchema offered() {
+        Map<String, JsonSchema> properties = new LinkedHashMap<String, JsonSchema>();
+        properties.put("id", described(JsonSchema.ofType("string"), "The service id this plugin registers."));
+        properties.put("attributes", keyedNumbers(
+                "What this service claims, keyed by attribute name, until the live service reports its own.",
+                "One advertised value, in the units its attribute name names."));
+        JsonSchema offered = described(JsonSchema.ofType("object"),
+                "One service this plugin registers, with what it advertises.");
+        offered.setProperties(properties);
+        offered.setRequired(Arrays.asList("id"));
+        return offered;
+    }
+
+    private static JsonSchema required() {
+        Map<String, JsonSchema> properties = new LinkedHashMap<String, JsonSchema>();
+        properties.put("id", described(JsonSchema.ofType("string"), "The service id this plugin asks for."));
+        properties.put("optional", described(JsonSchema.ofType("boolean"),
+                "Whether this plugin still starts when nothing provides the service."
+                        + " Absent means true, which is what a bare string means."));
+        properties.put("degradable", described(JsonSchema.ofType("boolean"),
+                "Whether this plugin accepts a service that never satisfies its constraints once the budget is spent."
+                        + " Absent means false, and it never excuses an absence."));
+        properties.put("constraints", keyedNumbers(
+                "What this plugin needs of the service, keyed by constraint name, compared against what the service advertises.",
+                "One required value, in the units its constraint name names."));
+        JsonSchema required = described(JsonSchema.ofType("object"),
+                "One service this plugin asks for, and what its absence or its shortfall costs.");
+        required.setProperties(properties);
+        required.setRequired(Arrays.asList("id"));
+        return required;
+    }
+
+    private static JsonSchema keyedNumbers(String description, String valueDescription) {
+        JsonSchema keyed = described(JsonSchema.ofType("object"), description);
+        keyed.setAdditionalProperties(described(JsonSchema.ofType("number"), valueDescription));
+        return keyed;
     }
 
     private static JsonSchema commands() {

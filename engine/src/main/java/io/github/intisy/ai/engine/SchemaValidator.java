@@ -36,6 +36,10 @@ public final class SchemaValidator {
     }
 
     private static void check(Object value, JsonSchema schema, String path, List<SchemaIssue> issues, String source) {
+        if (schema.getOneOf() != null) {
+            checkAlternatives(value, schema, path, issues, source);
+            return;
+        }
         String type = schema.getType();
         if ("object".equals(type)) {
             checkObject(value, schema, path, issues, source);
@@ -48,6 +52,52 @@ public final class SchemaValidator {
         } else if ("boolean".equals(type) && !(value instanceof Boolean)) {
             issues.add(typeIssue(value, schema, path));
         }
+    }
+
+    /**
+     * @implNote An author who wrote the right KIND of value and got one field wrong is told which
+     * field: when exactly one alternative takes values of this kind, its own issues are the issues,
+     * so "optional expected boolean" survives instead of being flattened into "expected a string or
+     * an object". Only a value no alternative could have meant is reported against the union.
+     */
+    private static void checkAlternatives(Object value, JsonSchema schema, String path, List<SchemaIssue> issues, String source) {
+        List<JsonSchema> alternatives = schema.getOneOf();
+        JsonSchema sameKind = null;
+        int sameKindCount = 0;
+        for (JsonSchema alternative : alternatives) {
+            if (validate(value, alternative, path, null).isEmpty()) {
+                check(value, alternative, path, issues, source);
+                return;
+            }
+            if (describe(value).equals(alternative.getType())) {
+                sameKind = alternative;
+                sameKindCount++;
+            }
+        }
+        if (sameKindCount == 1) {
+            check(value, sameKind, path, issues, source);
+            return;
+        }
+        issues.add(new SchemaIssue(path, "expected " + alternativesOf(alternatives) + ", got " + describe(value),
+                schema.getFix() != null ? schema.getFix() : "set " + path + " to " + alternativesOf(alternatives)));
+    }
+
+    private static String alternativesOf(List<JsonSchema> alternatives) {
+        StringBuilder out = new StringBuilder();
+        for (int index = 0; index < alternatives.size(); index++) {
+            if (index > 0) {
+                out.append(index == alternatives.size() - 1 ? " or " : ", ");
+            }
+            out.append(article(alternatives.get(index).getType()));
+        }
+        return out.toString();
+    }
+
+    private static String article(String type) {
+        if (type == null) {
+            return "another shape";
+        }
+        return ("object".equals(type) || "array".equals(type) || "integer".equals(type) ? "an " : "a ") + type;
     }
 
     private static void checkObject(Object value, JsonSchema schema, String path, List<SchemaIssue> issues, String source) {
