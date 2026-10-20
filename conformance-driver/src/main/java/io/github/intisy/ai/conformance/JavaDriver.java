@@ -41,7 +41,7 @@ import java.util.Map;
  * have. Nothing here evaluates a constraint, decides an activation policy or wraps a revocable
  * handle: writing any of those here would measure the driver instead of the engine.
  */
-public final class BayonetDriver {
+public final class JavaDriver {
 
     private static final Gson GSON = new GsonBuilder().serializeNulls().create();
 
@@ -56,7 +56,7 @@ public final class BayonetDriver {
         new ConstraintVocabulary.Entry("minReplicas", "maxReplicas", ConstraintVocabulary.Bound.LOWER),
         new ConstraintVocabulary.Entry("maxLatencyMs", "latencyMs", ConstraintVocabulary.Bound.UPPER)));
 
-    private BayonetDriver() {
+    private JavaDriver() {
     }
 
     /**

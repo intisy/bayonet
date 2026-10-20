@@ -37,7 +37,7 @@
   "author": "intisy",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/intisy/bayonet.git"
+    "url": "git+https://github.com/weivel/java.git"
   },
   "keywords": [
     "plugin",

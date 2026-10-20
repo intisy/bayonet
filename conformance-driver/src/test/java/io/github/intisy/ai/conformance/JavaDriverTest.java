@@ -26,7 +26,7 @@ import org.junit.jupiter.api.Test;
  * crashes. What this engine can and cannot witness is the measurement, so it is frozen here as a
  * set rather than left to a run nobody reads.
  */
-class BayonetDriverTest {
+class JavaDriverTest {
 
     private static final Gson GSON = new Gson();
 
@@ -43,7 +43,7 @@ class BayonetDriverTest {
         assumeTrue(!corpus.isEmpty(), "the conformance corpus is not beside this checkout");
         assertEquals(23, corpus.size(), "the corpus changed size, so the measurement below is stale");
         for (Map<String, Object> vector : corpus) {
-            Map<String, Object> outcome = BayonetDriver.answer(vector);
+            Map<String, Object> outcome = JavaDriver.answer(vector);
             assertNotNull(outcome.get("result"), vector.get("id") + " produced no answer at all");
             assertEquals(vector.get("id"), outcome.get("id"));
         }
@@ -55,7 +55,7 @@ class BayonetDriverTest {
         assumeTrue(!corpus.isEmpty(), "the conformance corpus is not beside this checkout");
         TreeSet<String> declined = new TreeSet<String>();
         for (Map<String, Object> vector : corpus) {
-            Map<String, Object> outcome = BayonetDriver.answer(vector);
+            Map<String, Object> outcome = JavaDriver.answer(vector);
             if (Boolean.FALSE.equals(outcome.get("witnessed"))) {
                 declined.add(String.valueOf(vector.get("id")));
                 assertTrue(reasonOf(outcome).length() > 20,
@@ -142,7 +142,7 @@ class BayonetDriverTest {
         vector.put("op", "boot");
         vector.put("given", given);
 
-        Map<String, Object> result = resultOf(BayonetDriver.answer(vector));
+        Map<String, Object> result = resultOf(JavaDriver.answer(vector));
         assertEquals(Collections.singletonList("api.http"), result.get("started"), String.valueOf(result));
         assertNull(result.get("refusal"), String.valueOf(result));
     }

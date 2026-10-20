@@ -10,7 +10,7 @@ dependencies {
 
 // The runner spawns this as a plain command, so everything it needs is inside the one jar.
 jar {
-    manifest { attributes "Main-Class": "io.github.intisy.ai.conformance.BayonetDriver" }
+    manifest { attributes "Main-Class": "io.github.intisy.ai.conformance.JavaDriver" }
     archiveFileName = "conformance-driver.jar"
     // Without this the task can run before the jars it unpacks exist: a `from` closure resolving a
     // configuration declares no dependency on what produces it, and locally it passes because the

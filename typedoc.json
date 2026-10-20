@@ -19,7 +19,7 @@
     "invalidLink": true,
     "notDocumented": true
   },
-  "sourceLinkTemplate": "https://github.com/intisy/bayonet/blob/{gitRevision}/{path}#L{line}",
+  "sourceLinkTemplate": "https://github.com/weivel/java/blob/{gitRevision}/{path}#L{line}",
   "ignoredHighlightLanguages": [
     "mermaid"
   ],
