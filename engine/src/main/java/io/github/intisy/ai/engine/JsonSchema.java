@@ -161,31 +161,32 @@ public final class JsonSchema {
         this.minimum = value;
     }
 
-    /**
-     * Named enumValues because enum is a Java keyword.
-     *
-     * @return the exact values a matching string must be one of, or null when unset
-     */
+    /** @return the fewest characters a matching string may hold, or null when unset */
     public Integer getMinLength() {
         return minLength;
     }
 
+    /** @param value the fewest characters a matching string may hold */
     public void setMinLength(Integer value) {
         this.minLength = value;
     }
 
+    /** @return the fewest items a matching array may hold, or null when unset */
     public Integer getMinItems() {
         return minItems;
     }
 
+    /** @param value the fewest items a matching array may hold */
     public void setMinItems(Integer value) {
         this.minItems = value;
     }
 
+    /** @return true when a matching array may hold no item twice, or null when unset */
     public Boolean getUniqueItems() {
         return uniqueItems;
     }
 
+    /** @param value true when a matching array may hold no item twice */
     public void setUniqueItems(Boolean value) {
         this.uniqueItems = value;
     }
@@ -195,6 +196,7 @@ public final class JsonSchema {
         return ifSchema;
     }
 
+    /** @param value the condition whose success applies the {@code then} schema */
     public void setIf(JsonSchema value) {
         this.ifSchema = value;
     }
@@ -204,10 +206,16 @@ public final class JsonSchema {
         return thenSchema;
     }
 
+    /** @param value the schema a value must also match when the {@code if} schema matches */
     public void setThen(JsonSchema value) {
         this.thenSchema = value;
     }
 
+    /**
+     * Named enumValues because enum is a Java keyword.
+     *
+     * @return the exact values a matching string must be one of, or null when unset
+     */
     public List<String> getEnumValues() {
         return enumValues;
     }
