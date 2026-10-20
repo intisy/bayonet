@@ -111,7 +111,7 @@ class JavaDriverTest {
     private static File vectorsDirectory() {
         String override = System.getProperty("conformance.vectors");
         if (override == null) {
-            return new File("../../../../weivel/conformance/vectors").getAbsoluteFile();
+            return new File("../../conformance/vectors").getAbsoluteFile();
         }
         File named = new File(override);
         if (!named.isDirectory()) {

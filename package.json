@@ -48,7 +48,6 @@
   "files": [
     "dist/",
     "generated/",
-    "schema/",
     "scripts/",
     "plugin.json",
     "README.md",

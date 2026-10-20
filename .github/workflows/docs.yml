@@ -13,7 +13,3 @@ permissions:
 jobs:
   docs:
     uses: intisy/workflows/.github/workflows/docs.yml@main
-    with:
-      # The manifest $schema URL points at the published site, so the schema ships with the
-      # reference that documents it.
-      extra_paths: 'schema/plugin.schema.json schema/plugin.schema.json'

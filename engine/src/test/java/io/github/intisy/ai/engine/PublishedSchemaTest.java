@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test;
  */
 class PublishedSchemaTest {
 
-    private static final File PUBLISHED = new File("../schema/plugin.schema.json");
+    private static final File PUBLISHED = new File(System.getProperty("model.schema", "plugin.schema.json"));
 
     private static final String RULE = PUBLISHED.getName() + " is the source every implementation "
             + "validates against, and this package's ManifestSchema no longer implements it.\n"
@@ -36,6 +36,8 @@ class PublishedSchemaTest {
 
     @Test
     void implementsThePublishedSchemaExactly() throws IOException {
+        assertTrue(PUBLISHED.isFile(), "plugin.schema.json is read from weivel/model, checked out beside this "
+                + "repository; not found at " + System.getProperty("model.schema.searched", PUBLISHED.getAbsolutePath()));
         Object published = new TestJson(read(PUBLISHED)).read();
         Map<String, Object> java = ManifestSchema.get().toTree();
         List<String> differences = new ArrayList<String>();

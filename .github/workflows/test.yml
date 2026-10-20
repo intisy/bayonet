@@ -14,5 +14,6 @@ jobs:
       gradle_args: -Dconformance.vectors=conformance/vectors
       extra_repository: weivel/conformance
       extra_path: conformance
+      extra_repositories: weivel/model model
     secrets:
       envPAT: ${{ secrets.PAT }}

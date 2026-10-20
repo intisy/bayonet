@@ -38,9 +38,19 @@ def noConcurrency = tasks.register("noConcurrency") {
 
 tasks.named("check") { dependsOn noConcurrency }
 
-// Both fixtures are read off disk at run time, so without declaring them the test task stays
-// UP-TO-DATE and green after the published schema is edited.
+// The schema lives in weivel/model, named by -Dmodel.schema, else checked out inside this repository
+// where CI puts the sibling, else beside it. A named path is held to it. Both fixtures are read off
+// disk at run time, so without declaring them the test task stays UP-TO-DATE after either is edited.
 tasks.named("test") {
-    inputs.file file("../schema/plugin.schema.json")
+    def named = System.getProperty("model.schema")
+    def candidates = named != null
+        ? [rootProject.file(named)]
+        : [rootProject.file("model/plugin.schema.json"), rootProject.file("../model/plugin.schema.json")]
+    def schema = candidates.find { it.isFile() } ?: candidates[0]
+    systemProperty "model.schema", schema.absolutePath
+    systemProperty "model.schema.searched", candidates*.absolutePath.join(" or ")
+    if (schema.isFile()) {
+        inputs.file schema
+    }
     inputs.file file("../test/parity/manifests.json")
 }

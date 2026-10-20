@@ -1,5 +1,5 @@
 {
-  "$schema": "./schema/plugin.schema.json",
+  "$schema": "https://weivel.github.io/model/plugin.schema.json",
   "id": "bayonet",
   "api": 1,
   "displayName": "Plugin API",

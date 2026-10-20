@@ -65,10 +65,10 @@ they are enforced in review:
 - `src/host/`: the ESM driver and manifest scanner a host runs plugins with, served as `./host`
 - `src/cli/`: the `intisy-plugin` command
 - `dist/` (compiled output, not committed): `cli/main.js` and `host/index.js`
-- `schema/plugin.schema.json`: the manifest schema, **a source file**. Every implementation
-  validates against it, this one included: `engine`'s `PublishedSchemaTest` holds
-  `ManifestSchema` to it and `schema-bundle-parity` holds the TeaVM bundle to it. Nothing
-  generates it, so edit it to change the vocabulary and then make each implementation match
+- The manifest schema is NOT here: it is `weivel/model`'s `plugin.schema.json`, published at
+  `https://weivel.github.io/model/plugin.schema.json`. This implementation validates against it:
+  `engine`'s `PublishedSchemaTest` holds `ManifestSchema` to it and `schema-bundle-parity` holds the
+  TeaVM bundle to it, reading `weivel/model` checked out inside or beside this repository.
 
 ## Installation
 

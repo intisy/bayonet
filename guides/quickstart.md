@@ -11,7 +11,7 @@ A plugin is a `plugin.json` and an entry module. Nothing else is required, and
 
 ```json
 {
-  "$schema": "./node_modules/@intisy/bayonet/schema/plugin.schema.json",
+  "$schema": "https://weivel.github.io/model/plugin.schema.json",
   "id": "wakatime-sync",
   "api": 1,
   "entry": "dist/index.js",

@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { expect, it } from "vitest";
+import { readModelSchema } from "./model-schema.js";
 
 // The manifest is described TWICE: once as the generated `PluginManifest` an author writes against,
 // and once as the published schema every implementation validates against. Adding a field to one and
@@ -38,9 +39,7 @@ function schemaFields(node: SchemaNode | undefined): string[] {
 // Read from the published source file rather than from the bundle, so this gate outlives the TeaVM
 // path and holds the contract against the vocabulary itself rather than against one implementation's
 // copy of it.
-const ROOT = JSON.parse(
-  readFileSync(fileURLToPath(new URL("../../schema/plugin.schema.json", import.meta.url)), "utf8"),
-) as SchemaNode;
+const ROOT = readModelSchema() as SchemaNode;
 
 function nodeAt(path: string): SchemaNode | undefined {
   let node: SchemaNode | undefined = ROOT;
