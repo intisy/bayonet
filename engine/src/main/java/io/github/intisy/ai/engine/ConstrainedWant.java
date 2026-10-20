@@ -20,7 +20,9 @@ final class ConstrainedWant {
     private final Budget budget;
     private final Pending<Object> settled = new Pending<Object>();
     private Map<String, Double> seen = Collections.emptyMap();
+    private Scheduler.Cancellable nextPoll;
     private long elapsed;
+    private boolean stopped;
 
     ConstrainedWant(ServiceHub hub, String consumerId, ServiceRequirement requirement, Budget budget) {
         this.hub = hub;
@@ -34,16 +36,48 @@ final class ConstrainedWant {
         return settled;
     }
 
+    /**
+     * Gives up on behalf of a consumer that is no longer running.
+     *
+     * @implNote Without this a quarantined plugin keeps spending its budget: the scheduled ticks
+     * call into providers on its behalf and can hand it a service minutes after the host stopped
+     * it.
+     */
+    void stop() {
+        if (stopped) {
+            return;
+        }
+        stopped = true;
+        if (nextPoll != null) {
+            nextPoll.cancel();
+        }
+        settled.reject(ServiceHub.stoppedWaiting(consumerId, requirement.getId()));
+    }
+
+    /**
+     * @implNote A provider is plugin code and may throw. A throw is reported and read as "does not
+     * satisfy yet", so the budget still terminates in a degrade or a refusal; letting it escape
+     * would leave the value pending for the life of the process, since the throw happens inside a
+     * scheduled task nobody is waiting on.
+     */
     private void attempt() {
+        if (stopped) {
+            return;
+        }
         ServiceHub.Entry entry = hub.entryOf(requirement.getId());
         if (entry != null) {
-            seen = overlay(entry.getAdvertised(), entry.getProvider().attributes());
-            if (hub.constraintVocabulary().satisfies(requirement.getConstraints(), seen)) {
-                Object served = entry.serve(hub.handles(), requirement.getConstraints());
-                if (served != null) {
-                    settled.resolve(served);
-                    return;
+            try {
+                seen = overlay(entry.getAdvertised(), entry.getProvider().attributes());
+                if (hub.constraintVocabulary().satisfies(requirement.getConstraints(), seen)) {
+                    Object served = entry.serve(hub.handles(), requirement.getConstraints());
+                    if (served != null) {
+                        settled.resolve(served);
+                        return;
+                    }
                 }
+            } catch (RuntimeException failure) {
+                Diagnostics.report("the provider of \"" + requirement.getId() + "\" threw while "
+                        + consumerId + " was waiting for it: " + failure);
             }
         }
         if (elapsed >= budget.getBudgetMillis()) {
@@ -51,7 +85,7 @@ final class ConstrainedWant {
             return;
         }
         elapsed += budget.getPollMillis();
-        hub.scheduler().schedule(new Runnable() {
+        nextPoll = hub.scheduler().schedule(new Runnable() {
             @Override
             public void run() {
                 attempt();
@@ -90,9 +124,9 @@ final class ConstrainedWant {
             settled.reject(unsatisfied(null));
             return;
         }
-        Object served = entry.serve(hub.handles(), requirement.getConstraints());
+        Object served = servedOrNull(entry, requirement.getConstraints());
         if (served == null) {
-            served = entry.serve(hub.handles(), Collections.<String, Double>emptyMap());
+            served = servedOrNull(entry, Collections.<String, Double>emptyMap());
         }
         if (served == null) {
             settled.reject(new PluginException(consumerId,
@@ -103,6 +137,16 @@ final class ConstrainedWant {
         Diagnostics.report(consumerId + " accepted a degraded \"" + requirement.getId()
                 + "\": asked " + requirement.getConstraints() + ", got " + seen);
         settled.resolve(served);
+    }
+
+    private Object servedOrNull(ServiceHub.Entry entry, Map<String, Double> constraints) {
+        try {
+            return entry.serve(hub.handles(), constraints);
+        } catch (RuntimeException failure) {
+            Diagnostics.report("the provider of \"" + requirement.getId() + "\" threw while serving "
+                    + consumerId + ": " + failure);
+            return null;
+        }
     }
 
     private PluginException unsatisfied(ServiceHub.Entry entry) {

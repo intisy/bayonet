@@ -8,6 +8,8 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Wraps a served service in a JDK dynamic proxy, so a consumer still holding one after it is
@@ -21,13 +23,45 @@ public final class ReflectiveHandles implements Handles {
 
     @Override
     public Handle around(String serviceId, Object service) {
-        Class<?>[] interfaces = service.getClass().getInterfaces();
-        if (interfaces.length == 0) {
-            Diagnostics.report("service \"" + serviceId + "\" implements no interface, so it cannot be"
-                    + " wrapped: a consumer holding it will not be told when it is withdrawn");
-            return new Unwrapped(service);
+        List<Class<?>> interfaces = interfacesOf(service.getClass());
+        if (interfaces.isEmpty()) {
+            return unwrappable(serviceId, service, "it implements no interface");
         }
-        return new Revocable(serviceId, service, interfaces);
+        try {
+            return new Revocable(serviceId, service, interfaces.toArray(new Class<?>[0]));
+        } catch (IllegalArgumentException refused) {
+            return unwrappable(serviceId, service, "no proxy can stand in for it: " + refused.getMessage());
+        }
+    }
+
+    private static Handle unwrappable(String serviceId, Object service, String why) {
+        Diagnostics.report("service \"" + serviceId + "\" cannot be wrapped because " + why
+                + ", so a consumer holding it will not be told when it is withdrawn");
+        return new Unwrapped(service);
+    }
+
+    /**
+     * @implNote The whole hierarchy, not {@code getClass().getInterfaces()}, which answers only the
+     * interfaces the concrete class declares ITSELF. A service whose interface sits on an abstract
+     * base is the ordinary shape, and reading only the concrete class would report it unwrappable
+     * while quietly handing it over.
+     */
+    private static List<Class<?>> interfacesOf(Class<?> type) {
+        List<Class<?>> found = new ArrayList<Class<?>>();
+        for (Class<?> current = type; current != null; current = current.getSuperclass()) {
+            collect(current.getInterfaces(), found);
+        }
+        return found;
+    }
+
+    private static void collect(Class<?>[] declared, List<Class<?>> found) {
+        for (Class<?> each : declared) {
+            if (found.contains(each)) {
+                continue;
+            }
+            found.add(each);
+            collect(each.getInterfaces(), found);
+        }
     }
 
     private static final class Unwrapped implements Handle {

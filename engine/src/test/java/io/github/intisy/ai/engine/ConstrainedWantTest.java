@@ -2,6 +2,7 @@ package io.github.intisy.ai.engine;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -10,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 
 class ConstrainedWantTest {
 
@@ -201,5 +203,56 @@ class ConstrainedWantTest {
         Settled settled = resolve(hub, scheduler, constrained(false), Budget.of(2000, 1000));
         assertNull(settled.value);
         assertTrue(settled.failure.getDetail().contains("minReplicas"), settled.failure.getDetail());
+    }
+
+    /** A provider that throws, which is plugin code doing what plugin code does. */
+    private static final class ThrowingProvider implements ServiceProvider {
+        @Override
+        public Map<String, Double> attributes() {
+            throw new IllegalStateException("the provider is broken");
+        }
+
+        @Override
+        public Object serviceFor(Map<String, Double> constraints) {
+            throw new IllegalStateException("the provider is broken");
+        }
+    }
+
+    @Test
+    void aProviderThatThrowsSettlesTheWantRatherThanWedgingIt() {
+        ManualScheduler scheduler = new ManualScheduler();
+        ServiceHub hub = hub(scheduler);
+        hub.forPlugin("store").register("storage.object", new ThrowingProvider(), numbers("maxReplicas", 3));
+        Settled settled = resolve(hub, scheduler, constrained(false), Budget.of(2000, 1000));
+        assertNull(settled.value);
+        assertTrue(settled.failure != null, "a want over a throwing provider never settled at all");
+    }
+
+    @Test
+    void refusesABudgetThatCouldNeverBeSpent() {
+        assertThrows(IllegalArgumentException.class, new Executable() {
+            @Override
+            public void execute() {
+                Budget.of(30000, 0);
+            }
+        });
+    }
+
+    @Test
+    void releasingThePluginRejectsItsConstrainedWantAndStopsThePolling() {
+        ManualScheduler scheduler = new ManualScheduler();
+        ServiceHub hub = hub(scheduler);
+        ScriptedProvider provider = new ScriptedProvider(Arrays.asList(numbers("maxReplicas", 1)), false);
+        hub.forPlugin("store").register("storage.object", provider, numbers("maxReplicas", 1));
+
+        Settled settled = new Settled();
+        hub.forPlugin("consumer").want(constrained(false), Budget.of(30000, 1000)).then(settled);
+        int readsBeforeRelease = provider.reads;
+        hub.releasePlugin("consumer");
+        assertTrue(settled.failure != null, "the released plugin's want is still pending");
+        for (int tick = 0; tick < 5; tick++) {
+            scheduler.fireAll();
+        }
+        assertEquals(readsBeforeRelease, provider.reads, "a released plugin kept polling the provider");
     }
 }

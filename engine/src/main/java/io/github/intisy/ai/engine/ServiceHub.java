@@ -105,7 +105,9 @@ public final class ServiceHub {
         private final String serviceId;
         private final ServiceProvider provider;
         private final Map<String, Double> advertised;
+        private final List<Object> served = new ArrayList<Object>();
         private final List<Handles.Handle> handed = new ArrayList<Handles.Handle>();
+        private boolean withdrawn;
 
         Entry(String pluginId, String serviceId, ServiceProvider provider, Map<String, Double> advertised) {
             this.pluginId = pluginId;
@@ -134,24 +136,53 @@ public final class ServiceHub {
         }
 
         /**
-         * @implNote Every instance handed out is remembered, because withdrawal has to reach the
-         * consumers already holding one and a provider may have served each of them differently.
+         * @implNote One handle per INSTANCE, not per lookup. Every instance handed out is
+         * remembered, because withdrawal has to reach the consumers already holding one and a
+         * provider may have served each of them differently; wrapping afresh on every lookup would
+         * also break the identity a lookup used to have, since two wrappers over one service are
+         * equal to neither each other nor it.
+         * @implNote Re-checked after the provider answers, because a provider is plugin code and
+         * may withdraw the registration while it is being asked. A handle minted into a withdrawn
+         * entry would be held by a consumer and revocable by nobody.
          */
         Object serve(Handles handles, Map<String, Double> constraints) {
-            Object served = provider.serviceFor(constraints);
-            if (served == null) {
+            if (withdrawn) {
                 return null;
             }
-            Handles.Handle handle = handles.around(serviceId, served);
+            Object instance = provider.serviceFor(constraints);
+            if (instance == null) {
+                return null;
+            }
+            Handles.Handle known = handleFor(instance);
+            if (known != null) {
+                return known.get();
+            }
+            Handles.Handle handle = handles.around(serviceId, instance);
+            if (withdrawn) {
+                handle.revoke();
+                return null;
+            }
+            served.add(instance);
             handed.add(handle);
             return handle.get();
         }
 
+        private Handles.Handle handleFor(Object instance) {
+            for (int index = 0; index < served.size(); index++) {
+                if (served.get(index) == instance) {
+                    return handed.get(index);
+                }
+            }
+            return null;
+        }
+
         void revokeAll() {
+            withdrawn = true;
             for (Handles.Handle handle : handed) {
                 handle.revoke();
             }
             handed.clear();
+            served.clear();
         }
     }
 
@@ -172,6 +203,7 @@ public final class ServiceHub {
     private final Map<String, Set<Waiter>> waiters = new LinkedHashMap<String, Set<Waiter>>();
     private final Map<String, Set<Listener>> watchers = new LinkedHashMap<String, Set<Listener>>();
     private final Map<String, List<Scheduler.Cancellable>> watching = new LinkedHashMap<String, List<Scheduler.Cancellable>>();
+    private final Map<String, List<ConstrainedWant>> constrainedWants = new LinkedHashMap<String, List<ConstrainedWant>>();
     private List<String> wellKnown = new ArrayList<String>();
     private ConstraintVocabulary vocabulary = ConstraintVocabulary.EMPTY;
     private Handles handles = Handles.UNWRAPPED;
@@ -281,7 +313,7 @@ public final class ServiceHub {
             @Override
             public Pending<Object> want(ServiceRequirement requirement, Budget budget) {
                 consumed(pluginId, requirement.getId());
-                return new ConstrainedWant(ServiceHub.this, pluginId, requirement, budget).start();
+                return awaitUnderConstraints(pluginId, requirement, budget);
             }
 
             @Override
@@ -338,6 +370,13 @@ public final class ServiceHub {
      * @param pluginId the plugin to release
      */
     public void releasePlugin(String pluginId) {
+        List<ConstrainedWant> constrained = constrainedWants.remove(pluginId);
+        if (constrained != null) {
+            for (ConstrainedWant want : constrained) {
+                want.stop();
+            }
+        }
+
         List<Scheduler.Cancellable> owned = watching.get(pluginId);
         if (owned != null) {
             for (Scheduler.Cancellable stop : new ArrayList<Scheduler.Cancellable>(owned)) {
@@ -375,6 +414,11 @@ public final class ServiceHub {
      * @implNote The instance is asked for only when somebody is listening. {@link
      * Entry#unconstrained} is a call into the provider, and a registration nobody is waiting on
      * must not look to that provider like a consumer arriving.
+     * @implNote A provider that will not serve an unconstrained ask has not ARRIVED for a plain
+     * waiter or watcher, so neither is told: resolving a want with null would be indistinguishable
+     * from success at the call site, and a watcher told "registered" with nothing to hand over is
+     * the same lie in the other direction. The registration itself stands, and a constrained want
+     * still finds it.
      */
     private Scheduler.Cancellable addService(final String pluginId, final String id,
                                              ServiceProvider provider, Map<String, Double> advertised) {
@@ -392,10 +436,11 @@ public final class ServiceHub {
         }
         entries.put(id, new Entry(pluginId, id, provider, advertised));
         provided(pluginId, id);
-        Set<Waiter> pending = waiters.remove(id);
         boolean watched = watchers.get(id) != null && !watchers.get(id).isEmpty();
-        if ((pending != null && !pending.isEmpty()) || watched) {
-            Object service = entries.get(id).unconstrained(handles);
+        boolean awaited = waiters.get(id) != null && !waiters.get(id).isEmpty();
+        Object service = watched || awaited ? entries.get(id).unconstrained(handles) : null;
+        if (service != null) {
+            Set<Waiter> pending = waiters.remove(id);
             if (pending != null) {
                 for (Waiter waiter : pending) {
                     if (waiter.timer != null) {
@@ -431,8 +476,9 @@ public final class ServiceHub {
     private Pending<Object> awaitService(final String pluginId, final String id, Long timeoutMillis) {
         consumed(pluginId, id);
         Entry entry = entries.get(id);
-        if (entry != null) {
-            return Pending.of(entry.unconstrained(handles));
+        Object now = entry == null ? null : entry.unconstrained(handles);
+        if (now != null) {
+            return Pending.of(now);
         }
         Pending<Object> settled = new Pending<Object>();
         final Waiter waiter = new Waiter(pluginId, settled);
@@ -458,6 +504,22 @@ public final class ServiceHub {
         }
         pending.add(waiter);
         return settled;
+    }
+
+    /**
+     * @implNote Tracked per plugin so {@link #releasePlugin} can end it. A constrained want spends
+     * its budget in scheduled ticks that call into providers, so one left running on behalf of a
+     * stopped plugin keeps asking for minutes and can resolve into a plugin that no longer exists.
+     */
+    private Pending<Object> awaitUnderConstraints(String pluginId, ServiceRequirement requirement, Budget budget) {
+        ConstrainedWant want = new ConstrainedWant(this, pluginId, requirement, budget);
+        List<ConstrainedWant> running = constrainedWants.get(pluginId);
+        if (running == null) {
+            running = new ArrayList<ConstrainedWant>();
+            constrainedWants.put(pluginId, running);
+        }
+        running.add(want);
+        return want.start();
     }
 
     private Scheduler.Cancellable addWatcher(String pluginId, String id, final Listener listener) {

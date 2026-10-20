@@ -87,4 +87,21 @@ class ActivationPolicyTest {
         assertTrue(bare.isOptional());
         assertTrue(!bare.isDegradable());
     }
+
+    /**
+     * A cycle member cannot provide anything: it never activates. Reporting a consumer of one as
+     * started is the same lie the refusal fixed point exists to prevent, one level up.
+     */
+    @Test
+    void refusesAUnitWhoseOnlyProviderWasDroppedByACycle() {
+        ActivationUnit consumer = unit("api.http", offers(), needs(need("x", false, false)));
+        ActivationUnit left = unit("left", offers("x"), needs(need("z", true, false)));
+        ActivationUnit right = unit("right", offers("z"), needs(need("x", true, false)));
+        ActivationPlan plan = Activation.order(Arrays.asList(consumer, left, right));
+
+        assertEquals(1, plan.getCycles().size(), plan.getCycles().toString());
+        assertEquals(new ArrayList<String>(), plan.getOrder(), "api.http cannot start: nothing will ever provide x");
+        assertEquals(1, plan.getRefusals().size(), plan.getRefusals().toString());
+        assertEquals("api.http", plan.getRefusals().get(0).getPluginId());
+    }
 }

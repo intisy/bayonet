@@ -2,6 +2,7 @@ package io.github.intisy.ai.conformance;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
@@ -14,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
@@ -105,5 +107,36 @@ class BayonetDriverTest {
         return override != null
             ? new File(override)
             : new File("../../../../weivel/engine-conformance/vectors").getAbsoluteFile();
+    }
+
+    /**
+     * The driver is the measuring instrument, so its defaults have to be the vocabulary's. A bare
+     * requirement is OPTIONAL everywhere else: the published schema says so, `ServiceRequirement`
+     * reads it so, and the `order` op in this same driver reads it so. No boot vector omits
+     * `optional` today, which is exactly why a disagreement here would be attributed to the engine.
+     */
+    @Test
+    void readsAnAbsentOptionalAsOptionalInABootVector() {
+        Map<String, Object> need = new LinkedHashMap<String, Object>();
+        need.put("id", "storage.object");
+        Map<String, Object> unit = new LinkedHashMap<String, Object>();
+        unit.put("id", "api.http");
+        unit.put("provides", Collections.singletonList("api.http"));
+        unit.put("requires", Collections.singletonList(need));
+        Map<String, Object> given = new LinkedHashMap<String, Object>();
+        given.put("units", Collections.singletonList(unit));
+        Map<String, Object> vector = new LinkedHashMap<String, Object>();
+        vector.put("id", "boot/a-bare-requirement");
+        vector.put("op", "boot");
+        vector.put("given", given);
+
+        Map<String, Object> result = resultOf(BayonetDriver.answer(vector));
+        assertEquals(Collections.singletonList("api.http"), result.get("started"), String.valueOf(result));
+        assertNull(result.get("refusal"), String.valueOf(result));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> resultOf(Map<String, Object> outcome) {
+        return (Map<String, Object>) outcome.get("result");
     }
 }

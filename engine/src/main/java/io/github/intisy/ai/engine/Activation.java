@@ -82,38 +82,23 @@ public final class Activation {
      */
     public static ActivationPlan order(List<ActivationUnit> units, DeclarationKind edgeSource) {
         Set<String> refusedIds = new LinkedHashSet<String>();
-        List<PluginException> refusals = refusals(units, refusedIds, edgeSource);
-
-        List<String> ids = new ArrayList<String>();
-        for (ActivationUnit unit : units) {
-            if (!refusedIds.contains(unit.getId())) {
-                ids.add(unit.getId());
+        List<PluginException> refusals = new ArrayList<PluginException>();
+        List<List<String>> cycles;
+        Map<String, Set<String>> dependencies;
+        List<String> ids;
+        while (true) {
+            ids = remaining(units, refusedIds);
+            dependencies = dependencies(units, refusedIds, edgeSource);
+            cycles = findCycles(ids, dependencies);
+            Set<String> unavailable = new LinkedHashSet<String>(refusedIds);
+            for (List<String> cycle : cycles) {
+                unavailable.addAll(cycle);
+            }
+            if (!refuseUnmet(units, refusedIds, unavailable, refusals, edgeSource)) {
+                break;
             }
         }
 
-        Map<String, List<String>> providersOf = providersOf(units, refusedIds, edgeSource);
-        Map<String, Set<String>> dependencies = new HashMap<String, Set<String>>();
-        for (String id : ids) {
-            dependencies.put(id, new LinkedHashSet<String>());
-        }
-        for (ActivationUnit unit : units) {
-            if (refusedIds.contains(unit.getId())) {
-                continue;
-            }
-            Set<String> needed = dependencies.get(unit.getId());
-            for (ActivationUnit.Need need : unit.getRequires()) {
-                if (need.getKind() != edgeSource) {
-                    continue;
-                }
-                for (String provider : listOf(providersOf, need.getId())) {
-                    if (!provider.equals(unit.getId())) {
-                        needed.add(provider);
-                    }
-                }
-            }
-        }
-
-        List<List<String>> cycles = findCycles(ids, dependencies);
         Set<String> settled = new HashSet<String>();
         for (List<String> cycle : cycles) {
             settled.addAll(cycle);
@@ -146,37 +131,73 @@ public final class Activation {
         return new ActivationPlan(order, cycles, refusals);
     }
 
-    /**
-     * @implNote Run to a fixed point, because a unit refused for its own missing need stops being a
-     * provider: a consumer whose only provider was refused has its mandatory need unmet just as
-     * surely as one nobody ever offered, and calling it started would be a lie the host acts on.
-     */
-    private static List<PluginException> refusals(List<ActivationUnit> units, Set<String> refusedIds, DeclarationKind edgeSource) {
-        List<PluginException> refusals = new ArrayList<PluginException>();
-        boolean refusedMore = true;
-        while (refusedMore) {
-            refusedMore = false;
-            Map<String, List<String>> providersOf = providersOf(units, refusedIds, edgeSource);
-            for (ActivationUnit unit : units) {
-                if (refusedIds.contains(unit.getId())) {
-                    continue;
-                }
-                for (ActivationUnit.Need need : unit.getRequires()) {
-                    if (need.getKind() != edgeSource || need.isOptional()
-                            || !listOf(providersOf, need.getId()).isEmpty()) {
-                        continue;
-                    }
-                    refusedIds.add(unit.getId());
-                    refusals.add(new PluginException(unit.getId(),
-                            "requires \"" + need.getId() + "\", which nothing here provides",
-                            "install something that provides \"" + need.getId()
-                                    + "\", or mark the requirement optional"));
-                    refusedMore = true;
-                    break;
-                }
+    private static List<String> remaining(List<ActivationUnit> units, Set<String> refusedIds) {
+        List<String> ids = new ArrayList<String>();
+        for (ActivationUnit unit : units) {
+            if (!refusedIds.contains(unit.getId())) {
+                ids.add(unit.getId());
             }
         }
-        return refusals;
+        return ids;
+    }
+
+    private static Map<String, Set<String>> dependencies(List<ActivationUnit> units, Set<String> refusedIds,
+                                                         DeclarationKind edgeSource) {
+        Map<String, List<String>> providersOf = providersOf(units, refusedIds, edgeSource);
+        Map<String, Set<String>> dependencies = new HashMap<String, Set<String>>();
+        for (ActivationUnit unit : units) {
+            if (refusedIds.contains(unit.getId())) {
+                continue;
+            }
+            Set<String> needed = new LinkedHashSet<String>();
+            for (ActivationUnit.Need need : unit.getRequires()) {
+                if (need.getKind() != edgeSource) {
+                    continue;
+                }
+                for (String provider : listOf(providersOf, need.getId())) {
+                    if (!provider.equals(unit.getId())) {
+                        needed.add(provider);
+                    }
+                }
+            }
+            dependencies.put(unit.getId(), needed);
+        }
+        return dependencies;
+    }
+
+    /**
+     * @implNote Run against the units that will actually START, which is why the caller re-runs it
+     * after recomputing the cycles rather than once. A unit refused for its own missing need stops
+     * being a provider, and so does a unit held out of the order by a cycle: a consumer of either
+     * has its mandatory need unmet just as surely as one nobody ever offered, and calling it
+     * started would be a lie the host acts on. A cycle member is NOT itself refused, because the
+     * cycle it is reported in is already the account of why it did not start.
+     *
+     * @return true when this pass refused at least one more unit, so the graph has to be recomputed
+     */
+    private static boolean refuseUnmet(List<ActivationUnit> units, Set<String> refusedIds, Set<String> unavailable,
+                                       List<PluginException> refusals, DeclarationKind edgeSource) {
+        Map<String, List<String>> providersOf = providersOf(units, unavailable, edgeSource);
+        boolean refusedMore = false;
+        for (ActivationUnit unit : units) {
+            if (unavailable.contains(unit.getId())) {
+                continue;
+            }
+            for (ActivationUnit.Need need : unit.getRequires()) {
+                if (need.getKind() != edgeSource || need.isOptional()
+                        || !listOf(providersOf, need.getId()).isEmpty()) {
+                    continue;
+                }
+                refusedIds.add(unit.getId());
+                refusals.add(new PluginException(unit.getId(),
+                        "requires \"" + need.getId() + "\", which nothing here provides",
+                        "install something that provides \"" + need.getId()
+                                + "\", or mark the requirement optional"));
+                refusedMore = true;
+                break;
+            }
+        }
+        return refusedMore;
     }
 
     private static Map<String, List<String>> providersOf(List<ActivationUnit> units, Set<String> refusedIds, DeclarationKind edgeSource) {

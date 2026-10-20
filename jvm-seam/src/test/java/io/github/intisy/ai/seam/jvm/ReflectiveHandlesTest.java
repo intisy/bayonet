@@ -65,6 +65,31 @@ class ReflectiveHandlesTest {
         assertTrue(held.toString().contains("accounts"), held.toString());
     }
 
+    /** The ordinary shape: the interface is on a base class, not on the concrete one. */
+    private abstract static class AbstractAccounts implements Accounts {
+        @Override
+        public String name() {
+            return "the inherited accounts";
+        }
+    }
+
+    private static final class InheritedAccounts extends AbstractAccounts {
+    }
+
+    @Test
+    void wrapsAServiceWhoseInterfaceIsOnItsSuperclass() {
+        Handles.Handle handle = new ReflectiveHandles().around("accounts", new InheritedAccounts());
+        final Accounts held = (Accounts) handle.get();
+        assertEquals("the inherited accounts", held.name());
+        handle.revoke();
+        assertThrows(ServiceRevoked.class, new Executable() {
+            @Override
+            public void execute() {
+                held.name();
+            }
+        });
+    }
+
     @Test
     void reportsAServiceItCannotWrapRatherThanPretending() {
         final List<String> reports = new ArrayList<String>();

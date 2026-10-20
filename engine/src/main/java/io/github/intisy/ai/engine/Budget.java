@@ -13,10 +13,16 @@ public final class Budget {
 
     /**
      * @param budgetMillis how long to keep re-asking before degrading or refusing
-     * @param pollMillis how long to wait between asks
+     * @param pollMillis how long to wait between asks, which must be positive
      * @return the budget those two describe
+     * @throws IllegalArgumentException when {@code pollMillis} is not positive, which would spend
+     * no budget per poll and so re-ask for ever
      */
     public static Budget of(long budgetMillis, long pollMillis) {
+        if (pollMillis <= 0) {
+            throw new IllegalArgumentException("a budget polls every " + pollMillis
+                    + " ms, which never reaches its deadline: give it a positive interval");
+        }
         return new Budget(budgetMillis, pollMillis);
     }
 

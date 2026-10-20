@@ -138,7 +138,7 @@ public final class BayonetDriver {
             for (Object required : list(unit.get("requires"))) {
                 Map<String, Object> need = map(required);
                 needs.add(new ActivationUnit.Need(DeclarationKind.SERVICE, String.valueOf(need.get("id")),
-                    Boolean.TRUE.equals(need.get("optional")), Boolean.TRUE.equals(need.get("degradable"))));
+                    !Boolean.FALSE.equals(need.get("optional")), Boolean.TRUE.equals(need.get("degradable"))));
             }
             units.add(new ActivationUnit(String.valueOf(unit.get("id")), offers, needs));
         }
