@@ -66,7 +66,7 @@
           "description": "Service ids this plugin registers, each namespaced by its own id or a well-known bare id.",
           "type": "array",
           "items": {
-            "oneOf": [
+            "anyOf": [
               {
                 "type": "string"
               },
@@ -92,6 +92,7 @@
                 ]
               }
             ]
+            ,"fix": "write the service id as a string, for example \"identity:accounts\", or an object carrying \"id\" and \"attributes\""
           },
           "fix": "list service ids as strings, for example [\"identity:accounts\"], or objects carrying \"id\" and \"attributes\""
         },
@@ -99,7 +100,7 @@
           "description": "Service ids this plugin asks for. A bare string asks for it optionally, which is what every manifest written before this object form meant.",
           "type": "array",
           "items": {
-            "oneOf": [
+            "anyOf": [
               {
                 "type": "string"
               },
@@ -133,6 +134,7 @@
                 ]
               }
             ]
+            ,"fix": "write the service id as a string, for example \"accounts\", or an object carrying \"id\" and what its absence costs"
           },
           "fix": "list service ids as strings, for example [\"accounts\"], or objects carrying \"id\" and what its absence costs"
         }

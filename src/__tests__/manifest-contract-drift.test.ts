@@ -18,7 +18,7 @@ interface SchemaNode {
   type?: string;
   properties?: Record<string, SchemaNode>;
   items?: SchemaNode;
-  oneOf?: SchemaNode[];
+  anyOf?: SchemaNode[];
   additionalProperties?: SchemaNode;
 }
 
@@ -28,7 +28,7 @@ interface SchemaNode {
 // would stay green over a block nothing checks.
 function shapeOf(node: SchemaNode | undefined): SchemaNode | undefined {
   const unwrapped = node?.type === "array" ? node.items : node;
-  return unwrapped?.oneOf ? unwrapped.oneOf.find((arm) => arm.properties) : unwrapped;
+  return unwrapped?.anyOf ? unwrapped.anyOf.find((arm) => arm.properties) : unwrapped;
 }
 
 function schemaFields(node: SchemaNode | undefined): string[] {

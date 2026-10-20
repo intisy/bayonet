@@ -255,4 +255,32 @@ class ConstrainedWantTest {
         }
         assertEquals(readsBeforeRelease, provider.reads, "a released plugin kept polling the provider");
     }
+
+    @Test
+    void saysAConstraintIsUnknownOnceRatherThanOncePerPoll() {
+        final List<String> reports = new ArrayList<String>();
+        Diagnostics.setSink(new Diagnostics.Sink() {
+            @Override
+            public void accept(String message) {
+                reports.add(message);
+            }
+        });
+        try {
+            ManualScheduler scheduler = new ManualScheduler();
+            ServiceHub hub = new ServiceHub(scheduler, null);
+            hub.wellKnown(Arrays.asList("storage.object"));
+            hub.forPlugin("store").register("storage.object",
+                    new ScriptedProvider(Arrays.asList(numbers("maxReplicas", 9)), false), numbers("maxReplicas", 9));
+            resolve(hub, scheduler, constrained(false), Budget.of(10000, 1000));
+            int unknown = 0;
+            for (String report : reports) {
+                if (report.contains("minReplicas")) {
+                    unknown++;
+                }
+            }
+            assertEquals(1, unknown, reports.toString());
+        } finally {
+            Diagnostics.setSink(null);
+        }
+    }
 }

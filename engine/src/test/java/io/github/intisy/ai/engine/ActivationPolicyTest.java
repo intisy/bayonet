@@ -1,6 +1,7 @@
 package io.github.intisy.ai.engine;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -9,6 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.Executable;
 
 class ActivationPolicyTest {
 
@@ -103,5 +105,19 @@ class ActivationPolicyTest {
         assertEquals(new ArrayList<String>(), plan.getOrder(), "api.http cannot start: nothing will ever provide x");
         assertEquals(1, plan.getRefusals().size(), plan.getRefusals().toString());
         assertEquals("api.http", plan.getRefusals().get(0).getPluginId());
+    }
+
+    @Test
+    void refusesTwoUnitsThatShareAnId() {
+        final List<ActivationUnit> twins = Arrays.asList(
+                unit("api.http", offers("api.http"), needs()),
+                unit("api.http", offers(), needs(need("storage.object", false, false))));
+        IllegalArgumentException refused = assertThrows(IllegalArgumentException.class, new Executable() {
+            @Override
+            public void execute() {
+                Activation.order(twins);
+            }
+        });
+        assertTrue(refused.getMessage().contains("api.http"), refused.getMessage());
     }
 }

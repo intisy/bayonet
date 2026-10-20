@@ -16,7 +16,7 @@ import java.util.Map;
 public final class JsonSchema {
 
     private final String type;
-    private List<JsonSchema> oneOf;
+    private List<JsonSchema> anyOf;
     private String schemaDraft;
     private String schemaId;
     private String title;
@@ -43,15 +43,21 @@ public final class JsonSchema {
     }
 
     /**
-     * A value that matches any one of several alternatives, which is how a field accepts both a
-     * bare id and the object form that says more about it.
+     * A value that matches at least one of several alternatives, which is how a field accepts both
+     * a bare id and the object form that says more about it.
+     *
+     * @implNote The keyword is {@code anyOf} rather than {@code oneOf} because that is what this
+     * package implements: the first alternative that matches wins and the rest are not tried.
+     * The two are identical while the alternatives are disjoint, as a string and an object are,
+     * and publishing the stricter keyword would make a third-party validator enforce something no
+     * implementation here checks.
      *
      * @param alternatives the schemas a value may match, in the order they are reported
      * @return a new schema carrying no type of its own, matching a value that matches any alternative
      */
-    public static JsonSchema oneOf(List<JsonSchema> alternatives) {
+    public static JsonSchema anyOf(List<JsonSchema> alternatives) {
         JsonSchema schema = new JsonSchema(null);
-        schema.oneOf = alternatives;
+        schema.anyOf = alternatives;
         return schema;
     }
 
@@ -61,13 +67,13 @@ public final class JsonSchema {
     }
 
     /** @return the alternatives a value may match, or null when this schema is not a union */
-    public List<JsonSchema> getOneOf() {
-        return oneOf;
+    public List<JsonSchema> getAnyOf() {
+        return anyOf;
     }
 
     /** @param value the alternatives a value may match */
-    public void setOneOf(List<JsonSchema> value) {
-        this.oneOf = value;
+    public void setAnyOf(List<JsonSchema> value) {
+        this.anyOf = value;
     }
 
     /** @return this schema's title, or null when unset */
@@ -220,12 +226,12 @@ public final class JsonSchema {
         put(out, "title", title);
         put(out, "description", description);
         put(out, "type", type);
-        if (oneOf != null) {
+        if (anyOf != null) {
             List<Object> alternatives = new ArrayList<Object>();
-            for (JsonSchema alternative : oneOf) {
+            for (JsonSchema alternative : anyOf) {
                 alternatives.add(alternative.toTree());
             }
-            out.put("oneOf", alternatives);
+            out.put("anyOf", alternatives);
         }
         if (properties != null) {
             Map<String, Object> nested = new LinkedHashMap<String, Object>();

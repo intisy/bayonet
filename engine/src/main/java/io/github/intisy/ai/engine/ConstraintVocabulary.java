@@ -93,8 +93,6 @@ public final class ConstraintVocabulary {
         for (Map.Entry<String, Double> constraint : declared.entrySet()) {
             Entry known = entryFor(constraint.getKey());
             if (known == null) {
-                Diagnostics.report("constraint \"" + constraint.getKey()
-                        + "\" is in no vocabulary this host declared, so nothing can satisfy it");
                 return false;
             }
             Double advertised = attributes.get(known.getAttributeName());
@@ -104,6 +102,25 @@ public final class ConstraintVocabulary {
             }
         }
         return true;
+    }
+
+    /**
+     * The declared constraint names this vocabulary has never heard of.
+     *
+     * @param declared what a consumer needs, keyed by constraint name
+     * @return the names no entry covers, in the order they were declared
+     * @implNote Separate from {@link #satisfies} so a caller reports them ONCE rather than once per
+     * poll: a thirty second budget would otherwise say the same thing thirty times, and a
+     * diagnostic repeated per tick reads as noise and gets filtered.
+     */
+    public List<String> unknownIn(Map<String, Double> declared) {
+        List<String> unknown = new ArrayList<String>();
+        for (String name : declared.keySet()) {
+            if (entryFor(name) == null) {
+                unknown.add(name);
+            }
+        }
+        return unknown;
     }
 
     private Entry entryFor(String constraintName) {

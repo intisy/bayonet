@@ -36,7 +36,7 @@ public final class SchemaValidator {
     }
 
     private static void check(Object value, JsonSchema schema, String path, List<SchemaIssue> issues, String source) {
-        if (schema.getOneOf() != null) {
+        if (schema.getAnyOf() != null) {
             checkAlternatives(value, schema, path, issues, source);
             return;
         }
@@ -61,7 +61,7 @@ public final class SchemaValidator {
      * an object". Only a value no alternative could have meant is reported against the union.
      */
     private static void checkAlternatives(Object value, JsonSchema schema, String path, List<SchemaIssue> issues, String source) {
-        List<JsonSchema> alternatives = schema.getOneOf();
+        List<JsonSchema> alternatives = schema.getAnyOf();
         JsonSchema sameKind = null;
         int sameKindCount = 0;
         for (JsonSchema alternative : alternatives) {

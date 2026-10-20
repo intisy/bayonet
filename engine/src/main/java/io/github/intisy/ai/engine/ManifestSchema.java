@@ -95,18 +95,30 @@ public final class ManifestSchema {
         Map<String, JsonSchema> properties = new LinkedHashMap<String, JsonSchema>();
         JsonSchema provides = described(JsonSchema.ofType("array"),
                 "Service ids this plugin registers, each namespaced by its own id or a well-known bare id.");
-        provides.setItems(JsonSchema.oneOf(Arrays.asList(JsonSchema.ofType("string"), offered())));
+        provides.setItems(entryOf(offered(), "write the service id as a string, for example \"identity:accounts\", or an object carrying \"id\" and \"attributes\""));
         provides.setFix("list service ids as strings, for example [\"identity:accounts\"], or objects carrying \"id\" and \"attributes\"");
         properties.put("provides", provides);
         JsonSchema consumes = described(JsonSchema.ofType("array"), "Service ids this plugin asks for."
                 + " A bare string asks for it optionally, which is what every manifest written before this object form meant.");
-        consumes.setItems(JsonSchema.oneOf(Arrays.asList(JsonSchema.ofType("string"), required())));
+        consumes.setItems(entryOf(required(), "write the service id as a string, for example \"accounts\", or an object carrying \"id\" and what its absence costs"));
         consumes.setFix("list service ids as strings, for example [\"accounts\"], or objects carrying \"id\" and what its absence costs");
         properties.put("consumes", consumes);
         JsonSchema services = described(JsonSchema.ofType("object"),
                 "The inter-plugin contract: what this plugin offers other plugins, and what it asks of them.");
         services.setProperties(properties);
         return services;
+    }
+
+    /**
+     * @implNote The fix is on the ENTRY rather than only on the array, because the two failures are
+     * different: a field that is not a list at all needs the array's instruction, and one bad entry
+     * in a good list needs this one. The array's fix is what a reader sees for the first and never
+     * for the second.
+     */
+    private static JsonSchema entryOf(JsonSchema object, String fix) {
+        JsonSchema entry = JsonSchema.anyOf(Arrays.asList(JsonSchema.ofType("string"), object));
+        entry.setFix(fix);
+        return entry;
     }
 
     private static JsonSchema offered() {

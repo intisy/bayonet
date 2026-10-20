@@ -331,20 +331,17 @@ public final class ServiceHub {
      * @implNote Owned by no plugin, so quarantining or deactivating one never takes it away, and it
      * is exempt from the namespacing rule a plugin registration is held to: the ids a host offers
      * are ones it defines rather than ones it is claiming from a shared space. Registering the same
-     * id twice replaces it, because a host wiring itself up twice is a restart, not a conflict.
+     * id twice replaces it, because a host wiring itself up twice is a restart, not a conflict,
+     * and the handles over the one it replaces are revoked for the same reason: a consumer still
+     * holding the old instance is holding something the host has stopped offering.
      */
     public void hostService(String id, Object service) {
-        entries.put(id, new Entry(HOST_OWNER, id, ServiceProviders.constant(service), null));
-        Set<Waiter> pending = waiters.remove(id);
-        if (pending != null) {
-            for (Waiter waiter : pending) {
-                if (waiter.timer != null) {
-                    waiter.timer.cancel();
-                }
-                waiter.settled.resolve(service);
-            }
+        Entry replaced = entries.get(id);
+        if (replaced != null) {
+            replaced.revokeAll();
         }
-        notifyWatchers(id, service, true);
+        entries.put(id, new Entry(HOST_OWNER, id, ServiceProviders.constant(service), null));
+        announceArrival(id);
     }
 
     /**
@@ -410,16 +407,6 @@ public final class ServiceHub {
         }
     }
 
-    /**
-     * @implNote The instance is asked for only when somebody is listening. {@link
-     * Entry#unconstrained} is a call into the provider, and a registration nobody is waiting on
-     * must not look to that provider like a consumer arriving.
-     * @implNote A provider that will not serve an unconstrained ask has not ARRIVED for a plain
-     * waiter or watcher, so neither is told: resolving a want with null would be indistinguishable
-     * from success at the call site, and a watcher told "registered" with nothing to hand over is
-     * the same lie in the other direction. The registration itself stands, and a constrained want
-     * still finds it.
-     */
     private Scheduler.Cancellable addService(final String pluginId, final String id,
                                              ServiceProvider provider, Map<String, Double> advertised) {
         if (!mayRegister(pluginId, id)) {
@@ -436,27 +423,45 @@ public final class ServiceHub {
         }
         entries.put(id, new Entry(pluginId, id, provider, advertised));
         provided(pluginId, id);
-        boolean watched = watchers.get(id) != null && !watchers.get(id).isEmpty();
-        boolean awaited = waiters.get(id) != null && !waiters.get(id).isEmpty();
-        Object service = watched || awaited ? entries.get(id).unconstrained(handles) : null;
-        if (service != null) {
-            Set<Waiter> pending = waiters.remove(id);
-            if (pending != null) {
-                for (Waiter waiter : pending) {
-                    if (waiter.timer != null) {
-                        waiter.timer.cancel();
-                    }
-                    waiter.settled.resolve(service);
-                }
-            }
-            notifyWatchers(id, service, true);
-        }
+        announceArrival(id);
         return new Scheduler.Cancellable() {
             @Override
             public void cancel() {
                 unregister(pluginId, id);
             }
         };
+    }
+
+    /**
+     * Tells whoever is waiting for this id that it is there now, through the same handle a lookup
+     * would hand them.
+     *
+     * @implNote The instance is asked for only when somebody is listening: {@link
+     * Entry#unconstrained} is a call into the provider, and a registration nobody is waiting on
+     * must not look to that provider like a consumer arriving.
+     * @implNote A provider that will not serve an unconstrained ask has not ARRIVED for a plain
+     * waiter or watcher, so neither is told: resolving a want with null would be
+     * indistinguishable from success at the call site, and a watcher told "registered" with
+     * nothing to hand over is the same lie in the other direction. The registration itself stands,
+     * and a constrained want still finds it.
+     */
+    private void announceArrival(String id) {
+        boolean watched = watchers.get(id) != null && !watchers.get(id).isEmpty();
+        boolean awaited = waiters.get(id) != null && !waiters.get(id).isEmpty();
+        Object service = watched || awaited ? entries.get(id).unconstrained(handles) : null;
+        if (service == null) {
+            return;
+        }
+        Set<Waiter> pending = waiters.remove(id);
+        if (pending != null) {
+            for (Waiter waiter : pending) {
+                if (waiter.timer != null) {
+                    waiter.timer.cancel();
+                }
+                waiter.settled.resolve(service);
+            }
+        }
+        notifyWatchers(id, service, true);
     }
 
     private void unregister(String pluginId, String id) {

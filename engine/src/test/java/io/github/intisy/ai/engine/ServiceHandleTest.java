@@ -1,5 +1,6 @@
 package io.github.intisy.ai.engine;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -128,5 +129,56 @@ class ServiceHandleTest {
         assertTrue(settled.isEmpty(), "a waiter was resolved with " + settled);
         assertNull(hub.get("accounts"));
         assertFalse(hub.ids().isEmpty(), "the registration itself still stands");
+    }
+
+    /** A wrapping whose handle is a DIFFERENT object, so "handed the wrapper" is observable. */
+    private static final class WrappingHandles implements Handles {
+        @Override
+        public Handle around(String serviceId, final Object service) {
+            final Object wrapper = new Object() {
+                @Override
+                public String toString() {
+                    return "a handle over " + service;
+                }
+            };
+            return new Handle() {
+                @Override
+                public Object get() {
+                    return wrapper;
+                }
+
+                @Override
+                public void revoke() {
+                }
+            };
+        }
+    }
+
+    @Test
+    void handsAHostServiceThroughTheSameHandleAsEveryOther() {
+        final WrappingHandles handles = new WrappingHandles();
+        ServiceHub hub = hub(handles);
+        final List<Object> delivered = new ArrayList<Object>();
+        hub.forPlugin("reader").watch("clock", new ServiceHub.Listener() {
+            @Override
+            public void changed(Object service, boolean registered) {
+                if (registered) {
+                    delivered.add(service);
+                }
+            }
+        });
+        hub.hostService("clock", "the host clock");
+        assertEquals(1, delivered.size(), delivered.toString());
+        assertSame(hub.get("clock"), delivered.get(0), "a watcher was handed something a lookup would not give it");
+    }
+
+    @Test
+    void revokesTheOldHostServiceWhenTheHostRegistersItAgain() {
+        CountingHandles handles = new CountingHandles();
+        ServiceHub hub = hub(handles);
+        hub.hostService("clock", "the first clock");
+        hub.get("clock");
+        hub.hostService("clock", "the second clock");
+        assertTrue(handles.revoked >= 1, "the replaced host service was never revoked");
     }
 }

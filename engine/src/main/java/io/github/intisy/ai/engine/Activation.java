@@ -81,6 +81,7 @@ public final class Activation {
      * genuinely must start before another.
      */
     public static ActivationPlan order(List<ActivationUnit> units, DeclarationKind edgeSource) {
+        refuseDuplicateIds(units);
         Set<String> refusedIds = new LinkedHashSet<String>();
         List<PluginException> refusals = new ArrayList<PluginException>();
         List<List<String>> cycles;
@@ -129,6 +130,21 @@ public final class Activation {
         }
 
         return new ActivationPlan(order, cycles, refusals);
+    }
+
+    /**
+     * @implNote Refused rather than reported, because everything here is keyed by id: two units
+     * sharing one would make the second invisible to refusal, to ordering and to the plan, and a
+     * caller that built such a set has a bug rather than a configuration.
+     */
+    private static void refuseDuplicateIds(List<ActivationUnit> units) {
+        Set<String> seen = new LinkedHashSet<String>();
+        for (ActivationUnit unit : units) {
+            if (!seen.add(unit.getId())) {
+                throw new IllegalArgumentException("two units share the id \"" + unit.getId()
+                        + "\", and everything here is keyed by id: give each one its own");
+            }
+        }
     }
 
     private static List<String> remaining(List<ActivationUnit> units, Set<String> refusedIds) {

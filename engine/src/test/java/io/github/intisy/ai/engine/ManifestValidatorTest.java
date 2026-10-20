@@ -228,6 +228,7 @@ class ManifestValidatorTest {
         List<SchemaIssue> issues = ManifestValidator.validate(manifest, WELL_KNOWN);
         assertEquals(1, issues.size(), issues.toString());
         assertEquals("services.consumes[0]", issues.get(0).getPath());
+        assertTrue(issues.get(0).getFix().startsWith("write the service id"), issues.get(0).getFix());
     }
 
     @Test

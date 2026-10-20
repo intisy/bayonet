@@ -32,6 +32,10 @@ final class ConstrainedWant {
     }
 
     Pending<Object> start() {
+        for (String unknown : hub.constraintVocabulary().unknownIn(requirement.getConstraints())) {
+            Diagnostics.report("constraint \"" + unknown + "\" is in no vocabulary this host"
+                    + " declared, so nothing can satisfy it for " + consumerId);
+        }
         attempt();
         return settled;
     }
