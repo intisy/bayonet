@@ -5,8 +5,8 @@
   "displayName": "Plugin API",
   "publish": {
     "scopedOnly": true,
-    "testSibling": "weivel/engine-conformance",
-    "gradleArgs": "-Dconformance.vectors=engine-conformance/vectors",
+    "testSibling": "weivel/conformance",
+    "gradleArgs": "-Dconformance.vectors=conformance/vectors",
     "jarModule": [
       "annotations",
       "processor",

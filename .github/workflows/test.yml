@@ -12,8 +12,8 @@ jobs:
     uses: intisy/workflows/.github/workflows/test.yml@main
     with:
       gradle_test: check
-      gradle_args: -Dconformance.vectors=engine-conformance/vectors
-      extra_repository: weivel/engine-conformance
-      extra_path: engine-conformance
+      gradle_args: -Dconformance.vectors=conformance/vectors
+      extra_repository: weivel/conformance
+      extra_path: conformance
     secrets:
       envPAT: ${{ secrets.PAT }}

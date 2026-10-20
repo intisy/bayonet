@@ -111,7 +111,7 @@ class BayonetDriverTest {
     private static File vectorsDirectory() {
         String override = System.getProperty("conformance.vectors");
         if (override == null) {
-            return new File("../../../../weivel/engine-conformance/vectors").getAbsoluteFile();
+            return new File("../../../../weivel/conformance/vectors").getAbsoluteFile();
         }
         File named = new File(override);
         if (!named.isDirectory()) {
