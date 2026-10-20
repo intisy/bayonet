@@ -28,9 +28,12 @@ jar {
 tasks.named("test") {
     def corpus = System.getProperty("conformance.vectors")
     if (corpus != null) {
-        systemProperty "conformance.vectors", corpus
-        if (file(corpus).isDirectory()) {
-            inputs.dir corpus
+        // Resolved at the ROOT, so CI can name the sibling checkout the way it laid it out rather
+        // than knowing where a test task happens to run from, which is the subproject directory.
+        def vectors = rootProject.file(corpus)
+        systemProperty "conformance.vectors", vectors.absolutePath
+        if (vectors.isDirectory()) {
+            inputs.dir vectors
         }
     }
 }
