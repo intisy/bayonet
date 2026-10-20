@@ -44,8 +44,8 @@ public final class ManifestSchema {
         properties.put("api", api);
 
         JsonSchema entry = described(JsonSchema.ofType("string"), "The built module a host imports. Required once capabilities are declared.");
-        entry.setPattern("^(?![\\\\/])(?![A-Za-z]:)(?!(?:.*[\\\\/])?\\.\\.(?:[\\\\/]|$))");
-        entry.setFix("point \"entry\" at the built module a host imports, inside the repo, for example \"dist/index.js\", with no leading slash, drive letter or ..");
+        entry.setPattern("^(?![\\\\/])(?![A-Za-z]:)(?![\\s\\S]*[\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029])(?!(?:[\\s\\S]*[\\\\/])?\\.\\.(?:[\\\\/]|(?![\\s\\S])))");
+        entry.setFix("point \"entry\" at the built module a host imports, inside the repo, for example \"dist/index.js\", with no leading slash, drive letter, control character or ..");
         properties.put("entry", entry);
 
         properties.put("displayName", described(JsonSchema.ofType("string"), "The name a surface shows instead of the id."));

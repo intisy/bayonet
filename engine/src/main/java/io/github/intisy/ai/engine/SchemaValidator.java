@@ -52,16 +52,14 @@ public final class SchemaValidator {
         } else if ("boolean".equals(type) && !(value instanceof Boolean)) {
             issues.add(typeIssue(value, schema, path));
         }
-        if (issues.isEmpty()) {
-            checkConditional(value, schema, path, issues);
-        }
+        checkConditional(value, schema, path, issues);
     }
 
     /**
-     * @implNote The `then` branch is checked with no diagnostics source, because its schema names only
-     * the fields the condition is about and every other field would otherwise be reported as unknown.
-     * A field `then` requires takes its fix from the enclosing schema's own property, which is where
-     * the author-facing hint for that field lives.
+     * @implNote Applied whatever else is wrong with the value, as draft-07 applies `then`, so this
+     * validator and any draft-07 one report the same set. The `then` branch is checked with no
+     * diagnostics source, because its schema names only the fields the condition is about and every
+     * other field would otherwise be reported as unknown.
      */
     private static void checkConditional(Object value, JsonSchema schema, String path, List<SchemaIssue> issues) {
         JsonSchema condition = schema.getIf();
@@ -69,21 +67,7 @@ public final class SchemaValidator {
         if (condition == null || consequence == null || !validate(value, condition, path, null).isEmpty()) {
             return;
         }
-        for (SchemaIssue issue : validate(value, consequence, path, null)) {
-            issues.add(withEnclosingFix(issue, schema, path));
-        }
-    }
-
-    private static SchemaIssue withEnclosingFix(SchemaIssue issue, JsonSchema enclosing, String path) {
-        String prefix = "(root)".equals(path) ? "" : path + ".";
-        String key = issue.getPath().startsWith(prefix) ? issue.getPath().substring(prefix.length()) : issue.getPath();
-        JsonSchema own = property(enclosing.getThen(), key);
-        JsonSchema property = property(enclosing, key);
-        if ((own != null && own.getFix() != null) || property == null || property.getFix() == null
-                || !issue.getMessage().startsWith("required field")) {
-            return issue;
-        }
-        return new SchemaIssue(issue.getPath(), issue.getMessage(), property.getFix());
+        issues.addAll(validate(value, consequence, path, null));
     }
 
     /**

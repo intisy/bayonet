@@ -138,6 +138,19 @@ class SchemaValidatorTest {
     }
 
     @Test
+    void appliesThenBesideAnUnrelatedIssue() {
+        JsonSchema schema = entryOnceCapabilities();
+        schema.setProperties(single("api", JsonSchema.ofType("integer")));
+        Map<String, Object> value = record("capabilities", Arrays.asList("p"));
+        value.put("api", "one");
+        List<String> paths = new ArrayList<String>();
+        for (SchemaIssue issue : SchemaValidator.validate(value, schema, "(root)", null)) {
+            paths.add(issue.getPath());
+        }
+        assertEquals(Arrays.asList("api", "entry"), paths);
+    }
+
+    @Test
     void skipsThenWhenIfFails() {
         List<SchemaIssue> issues = SchemaValidator.validate(record("capabilities", new ArrayList<Object>()), entryOnceCapabilities(), "(root)", null);
         assertTrue(issues.isEmpty(), issues.toString());

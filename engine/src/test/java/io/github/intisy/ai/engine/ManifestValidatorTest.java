@@ -72,6 +72,28 @@ class ManifestValidatorTest {
     }
 
     @Test
+    void refusesWindowsShapedEntries() {
+        for (String entry : Arrays.asList("\\abs\\x.js", "dist\\..\\x.js", "C:/x.js")) {
+            Map<String, Object> manifest = valid();
+            manifest.put("entry", entry);
+            List<SchemaIssue> issues = ManifestValidator.validate(manifest, WELL_KNOWN);
+            assertEquals(1, issues.size(), entry);
+            assertEquals("entry", issues.get(0).getPath());
+        }
+    }
+
+    @Test
+    void refusesAnEntryThatHidesAnEscapeBehindAControlCharacter() {
+        for (String entry : Arrays.asList("a\n/../../x.js", "a/..\n", "a\u0085/../x.js", "dist/index\u0000.js")) {
+            Map<String, Object> manifest = valid();
+            manifest.put("entry", entry);
+            List<SchemaIssue> issues = ManifestValidator.validate(manifest, WELL_KNOWN);
+            assertEquals(1, issues.size(), entry);
+            assertEquals("entry", issues.get(0).getPath());
+        }
+    }
+
+    @Test
     void refusesAProvidedServiceThatSquats() {
         Map<String, Object> services = new HashMap<String, Object>();
         services.put("provides", Arrays.asList("someone-else:thing"));
