@@ -20,3 +20,17 @@ jar {
     from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
     exclude "META-INF/*.SF", "META-INF/*.DSA", "META-INF/*.RSA", "META-INF/MANIFEST.MF"
 }
+
+// The corpus lives in another repository and is read at run time, so its path has to be handed to
+// the FORKED test JVM: a -D on the Gradle command line reaches the daemon and stops there, which
+// is measurable with a bogus path and was how this was found. Declared as an input for the reason
+// RULES.md section 8 gives: a gate whose subject Gradle cannot see stays UP-TO-DATE and green.
+tasks.named("test") {
+    def corpus = System.getProperty("conformance.vectors")
+    if (corpus != null) {
+        systemProperty "conformance.vectors", corpus
+        if (file(corpus).isDirectory()) {
+            inputs.dir corpus
+        }
+    }
+}

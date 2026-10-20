@@ -102,11 +102,23 @@ class BayonetDriverTest {
         }
     }
 
+    /**
+     * @implNote A caller that NAMES the corpus is held to it: the path is checked here rather than
+     * left to {@code assumeTrue}, because a CI that points at the wrong directory would otherwise
+     * report the same SKIPPED as a developer who has not checked the kit out, and a gate that
+     * cannot tell those two apart is the gate this task exists to fix.
+     */
     private static File vectorsDirectory() {
         String override = System.getProperty("conformance.vectors");
-        return override != null
-            ? new File(override)
-            : new File("../../../../weivel/engine-conformance/vectors").getAbsoluteFile();
+        if (override == null) {
+            return new File("../../../../weivel/engine-conformance/vectors").getAbsoluteFile();
+        }
+        File named = new File(override);
+        if (!named.isDirectory()) {
+            throw new IllegalStateException("conformance.vectors names \"" + named.getAbsolutePath()
+                + "\", which is not a directory: the corpus was asked for by path and is not there");
+        }
+        return named;
     }
 
     /**
