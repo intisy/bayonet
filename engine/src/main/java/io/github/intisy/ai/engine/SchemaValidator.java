@@ -52,6 +52,36 @@ public final class SchemaValidator {
         } else if ("boolean".equals(type) && !(value instanceof Boolean)) {
             issues.add(typeIssue(value, schema, path));
         }
+        if (issues.isEmpty()) {
+            checkConditional(value, schema, path, issues);
+        }
+    }
+
+    /**
+     * @implNote The `then` branch is checked with no diagnostics source, because its schema names only
+     * the fields the condition is about and every other field would otherwise be reported as unknown.
+     * A field `then` requires takes its fix from the enclosing schema's own property, which is where
+     * the author-facing hint for that field lives.
+     */
+    private static void checkConditional(Object value, JsonSchema schema, String path, List<SchemaIssue> issues) {
+        JsonSchema condition = schema.getIf();
+        JsonSchema consequence = schema.getThen();
+        if (condition == null || consequence == null || !validate(value, condition, path, null).isEmpty()) {
+            return;
+        }
+        for (SchemaIssue issue : validate(value, consequence, path, null)) {
+            issues.add(withEnclosingFix(issue, schema, path));
+        }
+    }
+
+    private static SchemaIssue withEnclosingFix(SchemaIssue issue, JsonSchema enclosing, String path) {
+        String prefix = "(root)".equals(path) ? "" : path + ".";
+        String key = issue.getPath().startsWith(prefix) ? issue.getPath().substring(prefix.length()) : issue.getPath();
+        JsonSchema property = property(enclosing, key);
+        if (property == null || property.getFix() == null || !issue.getMessage().startsWith("required field")) {
+            return issue;
+        }
+        return new SchemaIssue(issue.getPath(), issue.getMessage(), property.getFix());
     }
 
     /**
@@ -148,13 +178,29 @@ public final class SchemaValidator {
             issues.add(typeIssue(value, schema, path));
             return;
         }
-        JsonSchema items = schema.getItems();
-        if (items == null) {
-            return;
-        }
         List<?> values = (List<?>) value;
-        for (int index = 0; index < values.size(); index++) {
-            check(values.get(index), items, path + "[" + index + "]", issues, source);
+        Integer minItems = schema.getMinItems();
+        if (minItems != null && values.size() < minItems.intValue()) {
+            issues.add(new SchemaIssue(path, "expected at least " + minItems + " items, got " + values.size(),
+                    schema.getFix() != null ? schema.getFix() : "give " + path + " at least " + minItems + " items"));
+        }
+        JsonSchema items = schema.getItems();
+        if (items != null) {
+            for (int index = 0; index < values.size(); index++) {
+                check(values.get(index), items, path + "[" + index + "]", issues, source);
+            }
+        }
+        if (Boolean.TRUE.equals(schema.getUniqueItems())) {
+            checkUnique(values, path, issues);
+        }
+    }
+
+    private static void checkUnique(List<?> values, String path, List<SchemaIssue> issues) {
+        for (int index = 1; index < values.size(); index++) {
+            if (values.subList(0, index).contains(values.get(index))) {
+                issues.add(new SchemaIssue(path + "[" + index + "]",
+                        "\"" + values.get(index) + "\" is listed twice", "remove the duplicate entry"));
+            }
         }
     }
 
@@ -164,6 +210,11 @@ public final class SchemaValidator {
             return;
         }
         String text = (String) value;
+        Integer minLength = schema.getMinLength();
+        if (minLength != null && text.length() < minLength.intValue()) {
+            issues.add(new SchemaIssue(path, "expected at least " + minLength + " characters, got " + text.length(),
+                    schema.getFix() != null ? schema.getFix() : "give " + path + " at least " + minLength + " characters"));
+        }
         String pattern = schema.getPattern();
         // find() rather than matches(): the TypeScript uses RegExp.test, which is unanchored, and the
         // manifest patterns supply their own anchors.

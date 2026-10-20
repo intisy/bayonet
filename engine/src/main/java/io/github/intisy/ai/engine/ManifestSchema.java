@@ -44,7 +44,8 @@ public final class ManifestSchema {
         properties.put("api", api);
 
         JsonSchema entry = described(JsonSchema.ofType("string"), "The built module a host imports. Required once capabilities are declared.");
-        entry.setFix("point \"entry\" at the built module a host imports, for example \"dist/index.js\"");
+        entry.setPattern("^(?![\\\\/])(?![A-Za-z]:)(?!(?:.*[\\\\/])?\\.\\.(?:[\\\\/]|$))");
+        entry.setFix("point \"entry\" at the built module a host imports, inside the repo, for example \"dist/index.js\", with no leading slash, drive letter or ..");
         properties.put("entry", entry);
 
         properties.put("displayName", described(JsonSchema.ofType("string"), "The name a surface shows instead of the id."));
@@ -58,6 +59,7 @@ public final class ManifestSchema {
 
         JsonSchema capabilities = described(JsonSchema.ofType("array"), "Host-facing abilities this plugin provides at activation.");
         capabilities.setItems(JsonSchema.ofType("string"));
+        capabilities.setUniqueItems(Boolean.TRUE);
         capabilities.setFix("list capability ids as strings, for example [\"provider\", \"screens\"]");
         properties.put("capabilities", capabilities);
 
@@ -74,6 +76,7 @@ public final class ManifestSchema {
 
         JsonSchema permissions = described(JsonSchema.ofType("array"), "Declared permissions, surfaced at install and in dashboards.");
         permissions.setItems(JsonSchema.ofType("string"));
+        permissions.setUniqueItems(Boolean.TRUE);
         properties.put("permissions", permissions);
 
         properties.put("lifecycle", lifecycle());
@@ -88,7 +91,30 @@ public final class ManifestSchema {
         root.setTitle("weivel plugin manifest");
         root.setRequired(Arrays.asList("id", "api"));
         root.setProperties(properties);
+        root.setIf(capabilitiesDeclared());
+        root.setThen(entryNamed());
         return root;
+    }
+
+    private static JsonSchema capabilitiesDeclared() {
+        JsonSchema atLeastOne = JsonSchema.ofType("array");
+        atLeastOne.setMinItems(Integer.valueOf(1));
+        return requiring("capabilities", atLeastOne);
+    }
+
+    private static JsonSchema entryNamed() {
+        JsonSchema nonEmpty = JsonSchema.ofType("string");
+        nonEmpty.setMinLength(Integer.valueOf(1));
+        return requiring("entry", nonEmpty);
+    }
+
+    private static JsonSchema requiring(String key, JsonSchema shape) {
+        Map<String, JsonSchema> properties = new LinkedHashMap<String, JsonSchema>();
+        properties.put(key, shape);
+        JsonSchema object = JsonSchema.ofType("object");
+        object.setRequired(Arrays.asList(key));
+        object.setProperties(properties);
+        return object;
     }
 
     private static JsonSchema services() {

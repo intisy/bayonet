@@ -100,4 +100,67 @@ class SchemaValidatorTest {
         assertEquals(1, issues.size());
         assertEquals("presentation.bad", issues.get(0).getPath());
     }
+
+    private static JsonSchema entryOnceCapabilities() {
+        JsonSchema whenCapabilities = JsonSchema.ofType("object");
+        whenCapabilities.setRequired(Arrays.asList("capabilities"));
+        JsonSchema someCapabilities = JsonSchema.ofType("array");
+        someCapabilities.setMinItems(Integer.valueOf(1));
+        whenCapabilities.setProperties(single("capabilities", someCapabilities));
+        JsonSchema thenEntry = JsonSchema.ofType("object");
+        thenEntry.setRequired(Arrays.asList("entry"));
+        JsonSchema entry = JsonSchema.ofType("string");
+        entry.setMinLength(Integer.valueOf(1));
+        thenEntry.setProperties(single("entry", entry));
+        JsonSchema root = JsonSchema.ofType("object");
+        root.setIf(whenCapabilities);
+        root.setThen(thenEntry);
+        return root;
+    }
+
+    private static Map<String, JsonSchema> single(String key, JsonSchema schema) {
+        Map<String, JsonSchema> properties = new HashMap<String, JsonSchema>();
+        properties.put(key, schema);
+        return properties;
+    }
+
+    private static Map<String, Object> record(String key, Object value) {
+        Map<String, Object> record = new HashMap<String, Object>();
+        record.put(key, value);
+        return record;
+    }
+
+    @Test
+    void appliesThenWhenIfHolds() {
+        List<SchemaIssue> issues = SchemaValidator.validate(record("capabilities", Arrays.asList("p")), entryOnceCapabilities(), "(root)", null);
+        assertEquals(1, issues.size(), issues.toString());
+        assertEquals("entry", issues.get(0).getPath());
+    }
+
+    @Test
+    void skipsThenWhenIfFails() {
+        List<SchemaIssue> issues = SchemaValidator.validate(record("capabilities", new ArrayList<Object>()), entryOnceCapabilities(), "(root)", null);
+        assertTrue(issues.isEmpty(), issues.toString());
+    }
+
+    @Test
+    void refusesRepeatedItemsWhenUniqueItems() {
+        JsonSchema list = JsonSchema.ofType("array");
+        list.setItems(JsonSchema.ofType("string"));
+        list.setUniqueItems(Boolean.TRUE);
+        List<SchemaIssue> issues = SchemaValidator.validate(Arrays.asList("a", "b", "a"), list, "capabilities", null);
+        assertEquals(1, issues.size(), issues.toString());
+        assertEquals("capabilities[2]", issues.get(0).getPath());
+        assertEquals("remove the duplicate entry", issues.get(0).getFix());
+    }
+
+    @Test
+    void refusesShortStringAndArray() {
+        JsonSchema text = JsonSchema.ofType("string");
+        text.setMinLength(Integer.valueOf(1));
+        assertEquals(1, SchemaValidator.validate("", text, "entry", null).size());
+        JsonSchema list = JsonSchema.ofType("array");
+        list.setMinItems(Integer.valueOf(1));
+        assertEquals(1, SchemaValidator.validate(new ArrayList<Object>(), list, "capabilities", null).size());
+    }
 }

@@ -133,7 +133,9 @@ class ManifestValidatorTest {
         Map<String, Object> manifest = new HashMap<String, Object>();
         manifest.put("id", Integer.valueOf(7));
         manifest.put("api", Integer.valueOf(2));
-        manifest.put("capabilities", Arrays.asList("screens", "screens"));
+        Map<String, Object> services = new HashMap<String, Object>();
+        services.put("provides", Arrays.asList("someone-else:thing"));
+        manifest.put("services", services);
         List<SchemaIssue> issues = ManifestValidator.validate(manifest, WELL_KNOWN);
         assertEquals(1, issues.size());
         assertEquals("id", issues.get(0).getPath());

@@ -27,6 +27,11 @@ public final class JsonSchema {
     private JsonSchema additionalProperties;
     private String pattern;
     private Integer minimum;
+    private Integer minLength;
+    private Integer minItems;
+    private Boolean uniqueItems;
+    private JsonSchema ifSchema;
+    private JsonSchema thenSchema;
     private List<String> enumValues;
     private String fix;
 
@@ -161,6 +166,48 @@ public final class JsonSchema {
      *
      * @return the exact values a matching string must be one of, or null when unset
      */
+    public Integer getMinLength() {
+        return minLength;
+    }
+
+    public void setMinLength(Integer value) {
+        this.minLength = value;
+    }
+
+    public Integer getMinItems() {
+        return minItems;
+    }
+
+    public void setMinItems(Integer value) {
+        this.minItems = value;
+    }
+
+    public Boolean getUniqueItems() {
+        return uniqueItems;
+    }
+
+    public void setUniqueItems(Boolean value) {
+        this.uniqueItems = value;
+    }
+
+    /** @return the condition whose success applies {@link #getThen}, or null for none */
+    public JsonSchema getIf() {
+        return ifSchema;
+    }
+
+    public void setIf(JsonSchema value) {
+        this.ifSchema = value;
+    }
+
+    /** @return the schema a value must also match when {@link #getIf} matches, or null for none */
+    public JsonSchema getThen() {
+        return thenSchema;
+    }
+
+    public void setThen(JsonSchema value) {
+        this.thenSchema = value;
+    }
+
     public List<String> getEnumValues() {
         return enumValues;
     }
@@ -249,8 +296,17 @@ public final class JsonSchema {
         }
         put(out, "pattern", pattern);
         put(out, "minimum", minimum);
+        put(out, "minLength", minLength);
+        put(out, "minItems", minItems);
+        put(out, "uniqueItems", uniqueItems);
         put(out, "enum", enumValues);
         put(out, "fix", fix);
+        if (ifSchema != null) {
+            out.put("if", ifSchema.toTree());
+        }
+        if (thenSchema != null) {
+            out.put("then", thenSchema.toTree());
+        }
         return out;
     }
 

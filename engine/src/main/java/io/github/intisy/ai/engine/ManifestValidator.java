@@ -42,12 +42,9 @@ public final class ManifestValidator {
         }
 
         List<SchemaIssue> issues = new ArrayList<SchemaIssue>();
-        issues.addAll(entryIssues(value));
         issues.addAll(providedServiceIssues(value, wellKnownServices));
-        issues.addAll(duplicateIssues("capabilities", listAt(value, "capabilities")));
         issues.addAll(duplicateIssues("services.provides", serviceIds(listAt(mapAt(value, "services"), "provides"))));
         issues.addAll(duplicateIssues("services.consumes", serviceIds(listAt(mapAt(value, "services"), "consumes"))));
-        issues.addAll(duplicateIssues("permissions", listAt(value, "permissions")));
         return issues;
     }
 
@@ -67,39 +64,6 @@ public final class ManifestValidator {
         String pluginId = declaredId != null && !declaredId.isEmpty() ? declaredId : "(unknown plugin)";
         SchemaIssue first = issues.get(0);
         throw new PluginException(pluginId, "plugin.json " + first.getPath() + ": " + first.getMessage(), first.getFix());
-    }
-
-    private static List<SchemaIssue> entryIssues(Object value) {
-        List<SchemaIssue> issues = new ArrayList<SchemaIssue>();
-        List<Object> capabilities = listAt(value, "capabilities");
-        String entry = stringAt(value, "entry");
-        if (capabilities != null && !capabilities.isEmpty() && (entry == null || entry.isEmpty())) {
-            issues.add(new SchemaIssue("entry",
-                    "capabilities are declared but no entry names the module that provides them",
-                    "add \"entry\": \"dist/index.js\""));
-            return issues;
-        }
-        if (entry != null && !entry.isEmpty() && escapesRepo(entry)) {
-            issues.add(new SchemaIssue("entry",
-                    "\"" + entry + "\" is not a path inside the repo",
-                    "use a repo-relative path with no leading slash and no .."));
-        }
-        return issues;
-    }
-
-    private static boolean escapesRepo(String entry) {
-        if (entry.startsWith("/") || entry.startsWith("\\")) {
-            return true;
-        }
-        if (entry.length() >= 2 && entry.charAt(1) == ':' && Character.isLetter(entry.charAt(0))) {
-            return true;
-        }
-        for (String segment : entry.split("[\\\\/]")) {
-            if ("..".equals(segment)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private static List<SchemaIssue> providedServiceIssues(Object value, List<String> wellKnownServices) {
