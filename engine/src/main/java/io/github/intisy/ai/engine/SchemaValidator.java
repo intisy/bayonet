@@ -77,8 +77,10 @@ public final class SchemaValidator {
     private static SchemaIssue withEnclosingFix(SchemaIssue issue, JsonSchema enclosing, String path) {
         String prefix = "(root)".equals(path) ? "" : path + ".";
         String key = issue.getPath().startsWith(prefix) ? issue.getPath().substring(prefix.length()) : issue.getPath();
+        JsonSchema own = property(enclosing.getThen(), key);
         JsonSchema property = property(enclosing, key);
-        if (property == null || property.getFix() == null || !issue.getMessage().startsWith("required field")) {
+        if ((own != null && own.getFix() != null) || property == null || property.getFix() == null
+                || !issue.getMessage().startsWith("required field")) {
             return issue;
         }
         return new SchemaIssue(issue.getPath(), issue.getMessage(), property.getFix());

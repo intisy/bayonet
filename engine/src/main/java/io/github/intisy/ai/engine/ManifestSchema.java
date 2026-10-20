@@ -105,6 +105,7 @@ public final class ManifestSchema {
     private static JsonSchema entryNamed() {
         JsonSchema nonEmpty = JsonSchema.ofType("string");
         nonEmpty.setMinLength(Integer.valueOf(1));
+        nonEmpty.setFix("capabilities are declared, so add \"entry\" naming the module that provides them, for example \"dist/index.js\"");
         return requiring("entry", nonEmpty);
     }
 

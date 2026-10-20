@@ -56,8 +56,8 @@ it("reports each problem with its fix and exits 1", () => {
   expect(run(["validate", "--dir", dir], io)).toBe(1);
   expect(err).toEqual([
     "wakatime-sync: 1 problem",
-    "  error  entry: capabilities are declared but no entry names the module that provides them",
-    '    fix: add "entry": "dist/index.js"',
+    '  error  entry: required field "entry" is missing',
+    '    fix: capabilities are declared, so add "entry" naming the module that provides them, for example "dist/index.js"',
   ]);
 });
 
