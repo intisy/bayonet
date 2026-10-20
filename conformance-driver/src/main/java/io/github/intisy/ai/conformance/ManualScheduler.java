@@ -13,24 +13,66 @@ import java.util.List;
  */
 final class ManualScheduler implements Scheduler {
 
-    private final List<Runnable> pending = new ArrayList<Runnable>();
+    private static final class Tick {
+        final Runnable task;
+        final long dueMillis;
+
+        Tick(Runnable task, long dueMillis) {
+            this.task = task;
+            this.dueMillis = dueMillis;
+        }
+    }
+
+    private final List<Tick> pending = new ArrayList<Tick>();
+    private long nowMillis;
 
     @Override
     public Cancellable schedule(final Runnable task, long delayMillis) {
-        pending.add(task);
+        final Tick tick = new Tick(task, nowMillis + Math.max(0L, delayMillis));
+        pending.add(tick);
         return new Cancellable() {
             @Override
             public void cancel() {
-                pending.remove(task);
+                pending.remove(tick);
             }
         };
     }
 
+    /** Runs every tick scheduled so far, whenever it is due, without moving the clock. */
     void fireAll() {
-        List<Runnable> due = new ArrayList<Runnable>(pending);
+        List<Tick> due = new ArrayList<Tick>(pending);
         pending.clear();
-        for (Runnable task : due) {
-            task.run();
+        for (Tick tick : due) {
+            tick.task.run();
         }
+    }
+
+    /**
+     * Moves the clock to {@code millis}, running each tick due by then in due order, including ticks
+     * scheduled by ticks that ran on the way.
+     */
+    void advanceTo(long millis) {
+        Tick next = earliestDueBy(millis);
+        while (next != null) {
+            pending.remove(next);
+            nowMillis = next.dueMillis;
+            next.task.run();
+            next = earliestDueBy(millis);
+        }
+        nowMillis = Math.max(nowMillis, millis);
+    }
+
+    long now() {
+        return nowMillis;
+    }
+
+    private Tick earliestDueBy(long millis) {
+        Tick earliest = null;
+        for (Tick tick : pending) {
+            if (tick.dueMillis <= millis && (earliest == null || tick.dueMillis < earliest.dueMillis)) {
+                earliest = tick;
+            }
+        }
+        return earliest;
     }
 }

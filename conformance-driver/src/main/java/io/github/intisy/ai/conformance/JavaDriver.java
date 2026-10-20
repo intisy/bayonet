@@ -10,8 +10,10 @@ import io.github.intisy.ai.engine.Diagnostics;
 import io.github.intisy.ai.engine.ActivationPlan;
 import io.github.intisy.ai.engine.ActivationUnit;
 import io.github.intisy.ai.engine.DeclarationKind;
+import io.github.intisy.ai.engine.EventBus;
 import io.github.intisy.ai.engine.ManifestFacts;
 import io.github.intisy.ai.engine.ManifestValidator;
+import io.github.intisy.ai.engine.Pending;
 import io.github.intisy.ai.engine.PluginException;
 import io.github.intisy.ai.engine.PluginHost;
 import io.github.intisy.ai.engine.SchemaIssue;
@@ -117,6 +119,15 @@ public final class JavaDriver {
         }
         if ("resolve".equals(op)) {
             return resolve(given);
+        }
+        if ("carry".equals(op)) {
+            return carry(given);
+        }
+        if ("want".equals(op)) {
+            return want(given);
+        }
+        if ("scope".equals(op)) {
+            return scope(given);
         }
         throw new IllegalArgumentException("unknown op '" + op + "'");
     }
@@ -256,7 +267,8 @@ public final class JavaDriver {
     }
 
     private static Map<String, Object> validate(Map<String, Object> given) {
-        List<SchemaIssue> issues = ManifestValidator.validate(given.get("manifest"), WELL_KNOWN);
+        List<String> wellKnown = given.containsKey("wellKnownServices") ? strings(given.get("wellKnownServices")) : null;
+        List<SchemaIssue> issues = ManifestValidator.validate(given.get("manifest"), wellKnown);
         List<String> paths = new ArrayList<String>();
         for (SchemaIssue issue : issues) {
             paths.add(issue.getPath());
@@ -346,6 +358,133 @@ public final class JavaDriver {
         result.put("lookups", lookups);
         return result;
     }
+
+    private static Map<String, Object> carry(Map<String, Object> given) {
+        Object manifest = given.get("manifest");
+        int api = (int) number(map(manifest).get("api"), 1);
+        PluginHost engine = new PluginHost(null, new ArrayList<String>(), api, new ArrayList<String>());
+        ManifestFacts facts = new ManifestFacts("the-conformance-plugin", api,
+            new ArrayList<String>(), new ArrayList<String>(), manifest);
+        Object handedBack = engine.sessionFor(facts, SILENT_BUS).getFacts().getPayload();
+        Map<String, Object> result = new LinkedHashMap<String, Object>();
+        result.put("sameObject", Boolean.valueOf(handedBack == manifest));
+        return result;
+    }
+
+    /**
+     * @implNote The timeout is passed only when the vector names one. Defaulting an absent one to
+     * anything would turn the engine's unbounded wait into the driver's bounded one, and the vector
+     * about waiting without a deadline would then measure the driver.
+     */
+    private static Map<String, Object> want(Map<String, Object> given) {
+        final String serviceId = String.valueOf(map(given.get("service")).get("id"));
+        final ManualScheduler scheduler = new ManualScheduler();
+        ServiceHub hub = new ServiceHub(scheduler, null);
+        hub.wellKnown(Arrays.asList(serviceId));
+        final ServiceHub.Registry provider = hub.forPlugin("the-provider");
+        ServiceHub.Registry consumer = hub.forPlugin("the-consumer");
+        Object timeout = given.get("timeoutMillis");
+        Pending<Object> asked = timeout == null
+            ? consumer.want(serviceId)
+            : consumer.want(serviceId, (long) number(timeout, 0));
+        final TimedSettlement settlement = new TimedSettlement(scheduler);
+        asked.then(settlement);
+        Object registerAt = given.get("registerAtMillis");
+        if (registerAt != null) {
+            scheduler.schedule(new Runnable() {
+                @Override
+                public void run() {
+                    provider.register(serviceId, new ConformanceService() {
+                        @Override
+                        public String name() {
+                            return "the conformance service";
+                        }
+                    });
+                }
+            }, (long) number(registerAt, 0));
+        }
+        scheduler.advanceTo((long) number(given.get("horizonMillis"), 0));
+        Map<String, Object> result = new LinkedHashMap<String, Object>();
+        result.put("settled", Boolean.valueOf(settlement.value != null));
+        result.put("timedOut", Boolean.valueOf(settlement.failure != null));
+        result.put("atMillis", settlement.settled() ? Long.valueOf(settlement.atMillis) : null);
+        return result;
+    }
+
+    private static Map<String, Object> scope(Map<String, Object> given) {
+        ManualScheduler scheduler = new ManualScheduler();
+        ServiceHub hub = new ServiceHub(scheduler, null);
+        List<Boolean> lookups = new ArrayList<Boolean>();
+        List<Settlement> wants = new ArrayList<Settlement>();
+        for (Object each : list(given.get("steps"))) {
+            Map<String, Object> step = map(each);
+            String consumer = step.containsKey("consumer") ? String.valueOf(step.get("consumer")) : null;
+            if (step.containsKey("register")) {
+                hub.forPlugin(consumer).register(String.valueOf(step.get("register")), new ConformanceService() {
+                    @Override
+                    public String name() {
+                        return "the conformance service";
+                    }
+                });
+            } else if (step.containsKey("want")) {
+                Settlement settlement = new Settlement();
+                hub.forPlugin(consumer).want(String.valueOf(step.get("want"))).then(settlement);
+                wants.add(settlement);
+            } else if (step.containsKey("release")) {
+                hub.releasePlugin(String.valueOf(step.get("release")));
+            } else if (step.containsKey("lookup")) {
+                lookups.add(Boolean.valueOf(hub.get(String.valueOf(step.get("lookup"))) != null));
+            } else {
+                throw new IllegalArgumentException("unknown scope step " + step);
+            }
+        }
+        scheduler.fireAll();
+        List<String> states = new ArrayList<String>();
+        for (Settlement settlement : wants) {
+            states.add(settlement.failure != null ? "rejected" : settlement.value != null ? "settled" : "pending");
+        }
+        Map<String, Object> result = new LinkedHashMap<String, Object>();
+        result.put("lookups", lookups);
+        result.put("wants", states);
+        return result;
+    }
+
+    /** A settlement that also records the virtual time it arrived at. */
+    private static final class TimedSettlement extends Settlement {
+        private final ManualScheduler clock;
+        long atMillis;
+
+        TimedSettlement(ManualScheduler clock) {
+            this.clock = clock;
+        }
+
+        @Override
+        public void value(Object result) {
+            super.value(result);
+            atMillis = clock.now();
+        }
+
+        @Override
+        public void failure(PluginException reason) {
+            super.failure(reason);
+            atMillis = clock.now();
+        }
+    }
+
+    private static final EventBus SILENT_BUS = new EventBus() {
+        @Override
+        public void publish(String topic, Object payload) {
+        }
+
+        @Override
+        public Scheduler.Cancellable subscribe(String topic, Listener listener) {
+            return new Scheduler.Cancellable() {
+                @Override
+                public void cancel() {
+                }
+            };
+        }
+    };
 
     private static void use(ConformanceService held, Map<String, Object> result) {
         if (held == null) {

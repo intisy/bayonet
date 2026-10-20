@@ -4,7 +4,7 @@ import io.github.intisy.ai.engine.Pending;
 import io.github.intisy.ai.engine.PluginException;
 
 /** What a pending value settled as, held so the driver can answer with it. */
-final class Settlement implements Pending.Settlement<Object> {
+class Settlement implements Pending.Settlement<Object> {
 
     Object value;
     PluginException failure;

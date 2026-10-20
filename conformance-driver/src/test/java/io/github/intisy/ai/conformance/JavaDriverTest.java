@@ -41,7 +41,7 @@ class JavaDriverTest {
     void answersOrDeclinesEveryVectorWithoutCrashing() throws IOException {
         List<Map<String, Object>> corpus = corpus();
         assumeTrue(!corpus.isEmpty(), "the conformance corpus is not beside this checkout");
-        assertEquals(23, corpus.size(), "the corpus changed size, so the measurement below is stale");
+        assertEquals(35, corpus.size(), "the corpus changed size, so the measurement below is stale");
         for (Map<String, Object> vector : corpus) {
             Map<String, Object> outcome = JavaDriver.answer(vector);
             assertNotNull(outcome.get("result"), vector.get("id") + " produced no answer at all");
