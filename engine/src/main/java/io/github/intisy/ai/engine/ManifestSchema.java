@@ -82,10 +82,10 @@ public final class ManifestSchema {
         properties.put("marketplace", marketplace());
         properties.put("app", app());
 
-        JsonSchema root = described(JsonSchema.ofType("object"), "The single machine-readable description of a repo in the forebay ecosystem.");
+        JsonSchema root = described(JsonSchema.ofType("object"), "The single machine-readable description of a plugin, whichever application it targets.");
         root.setSchemaDraft(DRAFT);
         root.setSchemaId(SCHEMA_ID);
-        root.setTitle("forebay plugin manifest");
+        root.setTitle("weivel plugin manifest");
         root.setRequired(Arrays.asList("id", "api"));
         root.setProperties(properties);
         return root;
