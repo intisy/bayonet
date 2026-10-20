@@ -15549,31 +15549,16 @@ igiae_SchemaValidator_check = ($value, $schema, $path, $issues, $source) => {
         igiae_SchemaValidator_checkNumber($value, $schema, $path, $issues);
     else if (jl_String_equals($rt_s(274), $type) && !($value instanceof jl_Boolean))
         $issues.$add2(igiae_SchemaValidator_typeIssue($value, $schema, $path));
-    if ($issues.$isEmpty())
-        igiae_SchemaValidator_checkConditional($value, $schema, $path, $issues);
+    igiae_SchemaValidator_checkConditional($value, $schema, $path, $issues);
 },
 igiae_SchemaValidator_checkConditional = ($value, $schema, $path, $issues) => {
-    let $condition, $consequence, var$7, $issue;
+    let $condition, $consequence;
     $condition = igiae_JsonSchema_getIf($schema);
     $consequence = igiae_JsonSchema_getThen($schema);
     if ($condition !== null && $consequence !== null && (igiae_SchemaValidator_validate($value, $condition, $path, null)).$isEmpty()) {
-        var$7 = (igiae_SchemaValidator_validate($value, $consequence, $path, null)).$iterator();
-        while (var$7.$hasNext()) {
-            $issue = var$7.$next();
-            $issues.$add2(igiae_SchemaValidator_withEnclosingFix($issue, $schema, $path));
-        }
+        $issues.$addAll(igiae_SchemaValidator_validate($value, $consequence, $path, null));
         return;
     }
-},
-igiae_SchemaValidator_withEnclosingFix = ($issue, $enclosing, $path) => {
-    let $prefix, $key, $own, $property;
-    $prefix = jl_String_equals($rt_s(323), $path) ? $rt_s(10) : (((jl_StringBuilder__init_()).$append3($path)).$append3($rt_s(275))).$toString();
-    $key = !jl_String_startsWith(igiae_SchemaIssue_getPath($issue), $prefix) ? igiae_SchemaIssue_getPath($issue) : jl_String_substring0(igiae_SchemaIssue_getPath($issue), jl_String_length($prefix));
-    $own = igiae_SchemaValidator_property(igiae_JsonSchema_getThen($enclosing), $key);
-    $property = igiae_SchemaValidator_property($enclosing, $key);
-    if (!($own !== null && igiae_JsonSchema_getFix($own) !== null) && $property !== null && igiae_JsonSchema_getFix($property) !== null && jl_String_startsWith(igiae_SchemaIssue_getMessage($issue), $rt_s(392)))
-        return igiae_SchemaIssue__init_0(igiae_SchemaIssue_getPath($issue), igiae_SchemaIssue_getMessage($issue), igiae_JsonSchema_getFix($property));
-    return $issue;
 },
 igiae_SchemaValidator_checkAlternatives = ($value, $schema, $path, $issues, $source) => {
     let $alternatives, $sameKind, $sameKindCount, var$9, var$10, $alternative;
@@ -15588,8 +15573,8 @@ igiae_SchemaValidator_checkAlternatives = ($value, $schema, $path, $issues, $sou
                 return;
             }
             var$9 = new igiae_SchemaIssue;
-            var$10 = (((((jl_StringBuilder__init_()).$append3($rt_s(393))).$append3(igiae_SchemaValidator_alternativesOf($alternatives))).$append3($rt_s(394))).$append3(igiae_SchemaValidator_describe($value))).$toString();
-            igiae_SchemaIssue__init_(var$9, $path, var$10, igiae_JsonSchema_getFix($schema) !== null ? igiae_JsonSchema_getFix($schema) : (((((jl_StringBuilder__init_()).$append3($rt_s(395))).$append3($path)).$append3($rt_s(396))).$append3(igiae_SchemaValidator_alternativesOf($alternatives))).$toString());
+            var$10 = (((((jl_StringBuilder__init_()).$append3($rt_s(392))).$append3(igiae_SchemaValidator_alternativesOf($alternatives))).$append3($rt_s(393))).$append3(igiae_SchemaValidator_describe($value))).$toString();
+            igiae_SchemaIssue__init_(var$9, $path, var$10, igiae_JsonSchema_getFix($schema) !== null ? igiae_JsonSchema_getFix($schema) : (((((jl_StringBuilder__init_()).$append3($rt_s(394))).$append3($path)).$append3($rt_s(395))).$append3(igiae_SchemaValidator_alternativesOf($alternatives))).$toString());
             $issues.$add2(var$9);
             return;
         }
@@ -15609,7 +15594,7 @@ igiae_SchemaValidator_alternativesOf = $alternatives => {
     $index = 0;
     while ($index < $alternatives.$size()) {
         if ($index > 0)
-            $out.$append3($index != ($alternatives.$size() - 1 | 0) ? $rt_s(51) : $rt_s(397));
+            $out.$append3($index != ($alternatives.$size() - 1 | 0) ? $rt_s(51) : $rt_s(396));
         $out.$append3(igiae_SchemaValidator_article(igiae_JsonSchema_getType($alternatives.$get($index))));
         $index = $index + 1 | 0;
     }
@@ -15617,8 +15602,8 @@ igiae_SchemaValidator_alternativesOf = $alternatives => {
 },
 igiae_SchemaValidator_article = $type => {
     if ($type === null)
-        return $rt_s(398);
-    return (((jl_StringBuilder__init_()).$append3(!jl_String_equals($rt_s(338), $type) && !jl_String_equals($rt_s(390), $type) && !jl_String_equals($rt_s(391), $type) ? $rt_s(399) : $rt_s(400))).$append3($type)).$toString();
+        return $rt_s(397);
+    return (((jl_StringBuilder__init_()).$append3(!jl_String_equals($rt_s(338), $type) && !jl_String_equals($rt_s(390), $type) && !jl_String_equals($rt_s(391), $type) ? $rt_s(398) : $rt_s(399))).$append3($type)).$toString();
 },
 igiae_SchemaValidator_checkObject = ($value, $schema, $path, $issues, $source) => {
     let $record, $required, var$8, $key, $child, var$11, var$12, var$13, $entry, $childSchema;
@@ -15640,8 +15625,8 @@ igiae_SchemaValidator_checkObject = ($value, $schema, $path, $issues, $source) =
                 $child = igiae_SchemaValidator_property($schema, $key);
                 var$11 = new igiae_SchemaIssue;
                 var$12 = igiae_SchemaValidator_childPath($path, $key);
-                var$13 = ((((jl_StringBuilder__init_()).$append3($rt_s(401))).$append3($key)).$append3($rt_s(402))).$toString();
-                igiae_SchemaIssue__init_(var$11, var$12, var$13, $child !== null && igiae_JsonSchema_getFix($child) !== null ? igiae_JsonSchema_getFix($child) : (((((jl_StringBuilder__init_()).$append3($rt_s(372))).$append3($key)).$append3($rt_s(403))).$append3($path)).$toString());
+                var$13 = ((((jl_StringBuilder__init_()).$append3($rt_s(400))).$append3($key)).$append3($rt_s(401))).$toString();
+                igiae_SchemaIssue__init_(var$11, var$12, var$13, $child !== null && igiae_JsonSchema_getFix($child) !== null ? igiae_JsonSchema_getFix($child) : (((((jl_StringBuilder__init_()).$append3($rt_s(372))).$append3($key)).$append3($rt_s(402))).$append3($path)).$toString());
                 $issues.$add2(var$11);
             }
         }
@@ -15661,7 +15646,7 @@ igiae_SchemaValidator_checkObject = ($value, $schema, $path, $issues, $source) =
         }
         if ($source === null)
             continue;
-        igiae_Diagnostics_ignoreUnknown($rt_s(404), igiae_SchemaValidator_childPath($path, $key), $source);
+        igiae_Diagnostics_ignoreUnknown($rt_s(403), igiae_SchemaValidator_childPath($path, $key), $source);
     }
 },
 igiae_SchemaValidator_property = ($schema, $key) => {
@@ -15679,8 +15664,8 @@ igiae_SchemaValidator_checkArray = ($value, $schema, $path, $issues, $source) =>
     $minItems = igiae_JsonSchema_getMinItems($schema);
     if ($minItems !== null && $values.$size() < $minItems.$intValue()) {
         var$8 = new igiae_SchemaIssue;
-        var$9 = (((((jl_StringBuilder__init_()).$append3($rt_s(405))).$append($minItems)).$append3($rt_s(406))).$append2($values.$size())).$toString();
-        igiae_SchemaIssue__init_(var$8, $path, var$9, igiae_JsonSchema_getFix($schema) !== null ? igiae_JsonSchema_getFix($schema) : ((((((jl_StringBuilder__init_()).$append3($rt_s(407))).$append3($path)).$append3($rt_s(408))).$append($minItems)).$append3($rt_s(409))).$toString());
+        var$9 = (((((jl_StringBuilder__init_()).$append3($rt_s(404))).$append($minItems)).$append3($rt_s(405))).$append2($values.$size())).$toString();
+        igiae_SchemaIssue__init_(var$8, $path, var$9, igiae_JsonSchema_getFix($schema) !== null ? igiae_JsonSchema_getFix($schema) : ((((((jl_StringBuilder__init_()).$append3($rt_s(406))).$append3($path)).$append3($rt_s(407))).$append($minItems)).$append3($rt_s(408))).$toString());
         $issues.$add2(var$8);
     }
     a: {
@@ -15723,23 +15708,23 @@ igiae_SchemaValidator_checkString = ($value, $schema, $path, $issues) => {
     $minLength = igiae_JsonSchema_getMinLength($schema);
     if ($minLength !== null && jl_String_length($text) < $minLength.$intValue()) {
         var$7 = new igiae_SchemaIssue;
-        var$8 = (((((jl_StringBuilder__init_()).$append3($rt_s(405))).$append($minLength)).$append3($rt_s(410))).$append2(jl_String_length($text))).$toString();
-        igiae_SchemaIssue__init_(var$7, $path, var$8, igiae_JsonSchema_getFix($schema) !== null ? igiae_JsonSchema_getFix($schema) : ((((((jl_StringBuilder__init_()).$append3($rt_s(407))).$append3($path)).$append3($rt_s(408))).$append($minLength)).$append3($rt_s(411))).$toString());
+        var$8 = (((((jl_StringBuilder__init_()).$append3($rt_s(404))).$append($minLength)).$append3($rt_s(409))).$append2(jl_String_length($text))).$toString();
+        igiae_SchemaIssue__init_(var$7, $path, var$8, igiae_JsonSchema_getFix($schema) !== null ? igiae_JsonSchema_getFix($schema) : ((((((jl_StringBuilder__init_()).$append3($rt_s(406))).$append3($path)).$append3($rt_s(407))).$append($minLength)).$append3($rt_s(410))).$toString());
         $issues.$add2(var$7);
     }
     $pattern = igiae_JsonSchema_getPattern($schema);
     if ($pattern !== null && !jur_Matcher_find0(jur_Pattern_matcher(jur_Pattern_compile($pattern), $text))) {
         var$7 = new igiae_SchemaIssue;
-        var$8 = (((((jl_StringBuilder__init_()).$append3($rt_s(331))).$append3($text)).$append3($rt_s(412))).$append3($pattern)).$toString();
-        igiae_SchemaIssue__init_(var$7, $path, var$8, igiae_JsonSchema_getFix($schema) !== null ? igiae_JsonSchema_getFix($schema) : (((((jl_StringBuilder__init_()).$append3($rt_s(413))).$append3($path)).$append3($rt_s(414))).$append3($pattern)).$toString());
+        var$8 = (((((jl_StringBuilder__init_()).$append3($rt_s(331))).$append3($text)).$append3($rt_s(411))).$append3($pattern)).$toString();
+        igiae_SchemaIssue__init_(var$7, $path, var$8, igiae_JsonSchema_getFix($schema) !== null ? igiae_JsonSchema_getFix($schema) : (((((jl_StringBuilder__init_()).$append3($rt_s(412))).$append3($path)).$append3($rt_s(413))).$append3($pattern)).$toString());
         $issues.$add2(var$7);
     }
     $allowed = igiae_JsonSchema_getEnumValues($schema);
     if ($allowed !== null && !$allowed.$contains($text)) {
         $joined = igiae_SchemaValidator_join($allowed);
         var$12 = new igiae_SchemaIssue;
-        var$7 = (((((jl_StringBuilder__init_()).$append3($rt_s(331))).$append3($text)).$append3($rt_s(415))).$append3($joined)).$toString();
-        igiae_SchemaIssue__init_(var$12, $path, var$7, igiae_JsonSchema_getFix($schema) !== null ? igiae_JsonSchema_getFix($schema) : (((((jl_StringBuilder__init_()).$append3($rt_s(395))).$append3($path)).$append3($rt_s(416))).$append3($joined)).$toString());
+        var$7 = (((((jl_StringBuilder__init_()).$append3($rt_s(331))).$append3($text)).$append3($rt_s(414))).$append3($joined)).$toString();
+        igiae_SchemaIssue__init_(var$12, $path, var$7, igiae_JsonSchema_getFix($schema) !== null ? igiae_JsonSchema_getFix($schema) : (((((jl_StringBuilder__init_()).$append3($rt_s(394))).$append3($path)).$append3($rt_s(415))).$append3($joined)).$toString());
         $issues.$add2(var$12);
     }
 },
@@ -15761,9 +15746,9 @@ igiae_SchemaValidator_checkNumber = ($value, $schema, $path, $issues) => {
     $minimum = igiae_JsonSchema_getMinimum($schema);
     if ($minimum !== null && var$5.$doubleValue() < $minimum.$doubleValue()) {
         var$7 = new igiae_SchemaIssue;
-        var$8 = (((jl_StringBuilder__init_()).$append3($rt_s(417))).$append($minimum)).$append3($rt_s(394));
+        var$8 = (((jl_StringBuilder__init_()).$append3($rt_s(416))).$append($minimum)).$append3($rt_s(393));
         var$8 = (var$8.$append3(igiae_SchemaValidator_describeNumber(var$5))).$toString();
-        igiae_SchemaIssue__init_(var$7, $path, var$8, igiae_JsonSchema_getFix($schema) !== null ? igiae_JsonSchema_getFix($schema) : (((((jl_StringBuilder__init_()).$append3($rt_s(395))).$append3($path)).$append3($rt_s(418))).$append($minimum)).$toString());
+        igiae_SchemaIssue__init_(var$7, $path, var$8, igiae_JsonSchema_getFix($schema) !== null ? igiae_JsonSchema_getFix($schema) : (((((jl_StringBuilder__init_()).$append3($rt_s(394))).$append3($path)).$append3($rt_s(417))).$append($minimum)).$toString());
         $issues.$add2(var$7);
     }
 },
@@ -15785,8 +15770,8 @@ igiae_SchemaValidator_describeNumber = $value => {
 igiae_SchemaValidator_typeIssue = ($value, $schema, $path) => {
     let var$4, var$5;
     var$4 = new igiae_SchemaIssue;
-    var$5 = (((((jl_StringBuilder__init_()).$append3($rt_s(393))).$append3(igiae_JsonSchema_getType($schema))).$append3($rt_s(394))).$append3(igiae_SchemaValidator_describe($value))).$toString();
-    igiae_SchemaIssue__init_(var$4, $path, var$5, igiae_JsonSchema_getFix($schema) !== null ? igiae_JsonSchema_getFix($schema) : (((((jl_StringBuilder__init_()).$append3($rt_s(395))).$append3($path)).$append3($rt_s(419))).$append3(igiae_JsonSchema_getType($schema))).$toString());
+    var$5 = (((((jl_StringBuilder__init_()).$append3($rt_s(392))).$append3(igiae_JsonSchema_getType($schema))).$append3($rt_s(393))).$append3(igiae_SchemaValidator_describe($value))).$toString();
+    igiae_SchemaIssue__init_(var$4, $path, var$5, igiae_JsonSchema_getFix($schema) !== null ? igiae_JsonSchema_getFix($schema) : (((((jl_StringBuilder__init_()).$append3($rt_s(394))).$append3($path)).$append3($rt_s(418))).$append3(igiae_JsonSchema_getType($schema))).$toString());
     return var$4;
 },
 igiae_SchemaValidator_describe = $value => {
@@ -16321,7 +16306,7 @@ jur_SOLSet_hasConsumed = ($this, $matchResult) => {
     return 0;
 },
 jur_SOLSet_getName = $this => {
-    return $rt_s(420);
+    return $rt_s(419);
 };
 function igiaj_JsPluginContext$7$1() {
     let a = this; jl_Object.call(a);
@@ -16468,7 +16453,7 @@ jur_UMultiLineEOLSet_hasConsumed = ($this, $matchResult) => {
     return $res;
 },
 jur_UMultiLineEOLSet_getName = $this => {
-    return $rt_s(421);
+    return $rt_s(420);
 },
 ju_LinkedHashMapIterator$KeyIterator = $rt_classWithoutFields(ju_LinkedHashMapIterator),
 ju_LinkedHashMapIterator$KeyIterator__init_ = ($this, $map, $reversed) => {
@@ -17153,7 +17138,7 @@ jur_Lexer_movePointer = $this => {
                                         if ($nonCap > 57)
                                             break a;
                                         if ($nameBuilder === null) {
-                                            var$8 = jur_PatternSyntaxException__init_($rt_s(422), $this.$toString(), $this.$index);
+                                            var$8 = jur_PatternSyntaxException__init_($rt_s(421), $this.$toString(), $this.$index);
                                             $rt_throw(var$8);
                                         }
                                         $nameBuilder.$append0($nonCap);
@@ -17244,7 +17229,7 @@ jur_Lexer_parseCharClassName = $this => {
         if ($this.$pattern0.data[$this.$index] != 123) {
             var$2 = jl_String__init_1($this.$pattern0, jur_Lexer_nextIndex($this), 1);
             var$3 = jl_StringBuilder__init_();
-            jl_StringBuilder_append(jl_StringBuilder_append(var$3, $rt_s(423)), var$2);
+            jl_StringBuilder_append(jl_StringBuilder_append(var$3, $rt_s(422)), var$2);
             return jl_StringBuilder_toString(var$3);
         }
         jur_Lexer_nextIndex($this);
@@ -17265,15 +17250,15 @@ jur_Lexer_parseCharClassName = $this => {
     $res = $sb.$toString();
     if (jl_String_length($res) == 1) {
         var$2 = jl_StringBuilder__init_();
-        jl_StringBuilder_append(jl_StringBuilder_append(var$2, $rt_s(423)), $res);
+        jl_StringBuilder_append(jl_StringBuilder_append(var$2, $rt_s(422)), $res);
         return jl_StringBuilder_toString(var$2);
     }
     b: {
         c: {
             if (jl_String_length($res) > 3) {
-                if (jl_String_startsWith($res, $rt_s(423)))
+                if (jl_String_startsWith($res, $rt_s(422)))
                     break c;
-                if (jl_String_startsWith($res, $rt_s(424)))
+                if (jl_String_startsWith($res, $rt_s(423)))
                     break c;
             }
             break b;
@@ -17597,51 +17582,51 @@ igiae_ManifestSchema = $rt_classWithoutFields(),
 igiae_ManifestSchema_get = () => {
     let $properties, $id, $api, $entry, $icons, $capabilities, $targets, $permissions, $root;
     $properties = ju_LinkedHashMap__init_();
-    $properties.$put($rt_s(286), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(425)));
-    $id = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(426));
-    igiae_JsonSchema_setPattern($id, $rt_s(427));
-    igiae_JsonSchema_setFix($id, $rt_s(428));
+    $properties.$put($rt_s(286), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(424)));
+    $id = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(425));
+    igiae_JsonSchema_setPattern($id, $rt_s(426));
+    igiae_JsonSchema_setFix($id, $rt_s(427));
     $properties.$put($rt_s(17), $id);
-    $api = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(391)), $rt_s(429));
+    $api = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(391)), $rt_s(428));
     igiae_JsonSchema_setMinimum($api, jl_Integer_valueOf(1));
-    igiae_JsonSchema_setFix($api, $rt_s(430));
+    igiae_JsonSchema_setFix($api, $rt_s(429));
     $properties.$put($rt_s(11), $api);
-    $entry = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(431));
-    igiae_JsonSchema_setPattern($entry, $rt_s(432));
-    igiae_JsonSchema_setFix($entry, $rt_s(433));
-    $properties.$put($rt_s(434), $entry);
-    $properties.$put($rt_s(435), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(436)));
-    $properties.$put($rt_s(437), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(438)));
-    $icons = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(439));
-    igiae_JsonSchema_setAdditionalProperties($icons, igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(438)));
-    $properties.$put($rt_s(440), $icons);
-    $capabilities = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(441));
+    $entry = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(430));
+    igiae_JsonSchema_setPattern($entry, $rt_s(431));
+    igiae_JsonSchema_setFix($entry, $rt_s(432));
+    $properties.$put($rt_s(433), $entry);
+    $properties.$put($rt_s(434), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(435)));
+    $properties.$put($rt_s(436), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(437)));
+    $icons = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(438));
+    igiae_JsonSchema_setAdditionalProperties($icons, igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(437)));
+    $properties.$put($rt_s(439), $icons);
+    $capabilities = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(440));
     igiae_JsonSchema_setItems($capabilities, igiae_JsonSchema_ofType($rt_s(272)));
     jl_Boolean_$callClinit();
     igiae_JsonSchema_setUniqueItems($capabilities, jl_Boolean_TRUE);
-    igiae_JsonSchema_setFix($capabilities, $rt_s(442));
+    igiae_JsonSchema_setFix($capabilities, $rt_s(441));
     $properties.$put($rt_s(18), $capabilities);
-    $targets = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(443));
+    $targets = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(442));
     igiae_JsonSchema_setItems($targets, igiae_JsonSchema_ofType($rt_s(272)));
-    igiae_JsonSchema_setFix($targets, $rt_s(444));
+    igiae_JsonSchema_setFix($targets, $rt_s(443));
     $properties.$put($rt_s(20), $targets);
     $properties.$put($rt_s(314), igiae_ManifestSchema_services());
-    $properties.$put($rt_s(445), igiae_ManifestSchema_commands());
-    $properties.$put($rt_s(446), igiae_ManifestSchema_config());
-    $properties.$put($rt_s(447), igiae_ManifestSchema_data());
-    $permissions = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(448));
+    $properties.$put($rt_s(444), igiae_ManifestSchema_commands());
+    $properties.$put($rt_s(445), igiae_ManifestSchema_config());
+    $properties.$put($rt_s(446), igiae_ManifestSchema_data());
+    $permissions = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(447));
     igiae_JsonSchema_setItems($permissions, igiae_JsonSchema_ofType($rt_s(272)));
     igiae_JsonSchema_setUniqueItems($permissions, jl_Boolean_TRUE);
     $properties.$put($rt_s(19), $permissions);
-    $properties.$put($rt_s(449), igiae_ManifestSchema_lifecycle());
-    $properties.$put($rt_s(450), igiae_ManifestSchema_publish());
-    $properties.$put($rt_s(451), igiae_ManifestSchema_repo());
-    $properties.$put($rt_s(452), igiae_ManifestSchema_marketplace());
+    $properties.$put($rt_s(448), igiae_ManifestSchema_lifecycle());
+    $properties.$put($rt_s(449), igiae_ManifestSchema_publish());
+    $properties.$put($rt_s(450), igiae_ManifestSchema_repo());
+    $properties.$put($rt_s(451), igiae_ManifestSchema_marketplace());
     $properties.$put($rt_s(16), igiae_ManifestSchema_app());
-    $root = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(453));
-    igiae_JsonSchema_setSchemaDraft($root, $rt_s(454));
-    igiae_JsonSchema_setSchemaId($root, $rt_s(455));
-    igiae_JsonSchema_setTitle($root, $rt_s(456));
+    $root = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(452));
+    igiae_JsonSchema_setSchemaDraft($root, $rt_s(453));
+    igiae_JsonSchema_setSchemaId($root, $rt_s(454));
+    igiae_JsonSchema_setTitle($root, $rt_s(455));
     igiae_JsonSchema_setRequired($root, ju_Arrays_asList($rt_wrapArray(jl_String, [$rt_s(17), $rt_s(11)])));
     igiae_JsonSchema_setProperties($root, $properties);
     igiae_JsonSchema_setIf($root, igiae_ManifestSchema_capabilitiesDeclared());
@@ -17658,8 +17643,8 @@ igiae_ManifestSchema_entryNamed = () => {
     let $nonEmpty;
     $nonEmpty = igiae_JsonSchema_ofType($rt_s(272));
     igiae_JsonSchema_setMinLength($nonEmpty, jl_Integer_valueOf(1));
-    igiae_JsonSchema_setFix($nonEmpty, $rt_s(457));
-    return igiae_ManifestSchema_requiring($rt_s(434), $nonEmpty);
+    igiae_JsonSchema_setFix($nonEmpty, $rt_s(456));
+    return igiae_ManifestSchema_requiring($rt_s(433), $nonEmpty);
 },
 igiae_ManifestSchema_requiring = ($key, $shape) => {
     let $properties, $object, var$5;
@@ -17675,15 +17660,15 @@ igiae_ManifestSchema_requiring = ($key, $shape) => {
 igiae_ManifestSchema_services = () => {
     let $properties, $provides, $consumes, $services;
     $properties = ju_LinkedHashMap__init_();
-    $provides = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(458));
-    igiae_JsonSchema_setItems($provides, igiae_ManifestSchema_entryOf(igiae_ManifestSchema_offered(), $rt_s(459)));
-    igiae_JsonSchema_setFix($provides, $rt_s(460));
+    $provides = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(457));
+    igiae_JsonSchema_setItems($provides, igiae_ManifestSchema_entryOf(igiae_ManifestSchema_offered(), $rt_s(458)));
+    igiae_JsonSchema_setFix($provides, $rt_s(459));
     $properties.$put($rt_s(315), $provides);
-    $consumes = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(461));
-    igiae_JsonSchema_setItems($consumes, igiae_ManifestSchema_entryOf(igiae_ManifestSchema_required(), $rt_s(462)));
-    igiae_JsonSchema_setFix($consumes, $rt_s(463));
+    $consumes = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(460));
+    igiae_JsonSchema_setItems($consumes, igiae_ManifestSchema_entryOf(igiae_ManifestSchema_required(), $rt_s(461)));
+    igiae_JsonSchema_setFix($consumes, $rt_s(462));
     $properties.$put($rt_s(316), $consumes);
-    $services = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(464));
+    $services = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(463));
     igiae_JsonSchema_setProperties($services, $properties);
     return $services;
 },
@@ -17700,9 +17685,9 @@ igiae_ManifestSchema_entryOf = ($object, $fix) => {
 igiae_ManifestSchema_offered = () => {
     let $properties, $offered, var$3;
     $properties = ju_LinkedHashMap__init_();
-    $properties.$put($rt_s(17), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(465)));
-    $properties.$put($rt_s(466), igiae_ManifestSchema_keyedNumbers($rt_s(467), $rt_s(468)));
-    $offered = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(469));
+    $properties.$put($rt_s(17), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(464)));
+    $properties.$put($rt_s(465), igiae_ManifestSchema_keyedNumbers($rt_s(466), $rt_s(467)));
+    $offered = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(468));
     igiae_JsonSchema_setProperties($offered, $properties);
     var$3 = $rt_createArray(jl_String, 1);
     var$3.data[0] = $rt_s(17);
@@ -17712,11 +17697,11 @@ igiae_ManifestSchema_offered = () => {
 igiae_ManifestSchema_required = () => {
     let $properties, $required, var$3;
     $properties = ju_LinkedHashMap__init_();
-    $properties.$put($rt_s(17), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(470)));
-    $properties.$put($rt_s(471), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(274)), $rt_s(472)));
-    $properties.$put($rt_s(473), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(274)), $rt_s(474)));
-    $properties.$put($rt_s(475), igiae_ManifestSchema_keyedNumbers($rt_s(476), $rt_s(477)));
-    $required = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(478));
+    $properties.$put($rt_s(17), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(469)));
+    $properties.$put($rt_s(470), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(274)), $rt_s(471)));
+    $properties.$put($rt_s(472), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(274)), $rt_s(473)));
+    $properties.$put($rt_s(474), igiae_ManifestSchema_keyedNumbers($rt_s(475), $rt_s(476)));
+    $required = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(477));
     igiae_JsonSchema_setProperties($required, $properties);
     var$3 = $rt_createArray(jl_String, 1);
     var$3.data[0] = $rt_s(17);
@@ -17732,27 +17717,27 @@ igiae_ManifestSchema_keyedNumbers = ($description, $valueDescription) => {
 igiae_ManifestSchema_commands = () => {
     let $properties, $command, $commands;
     $properties = ju_LinkedHashMap__init_();
-    $properties.$put($rt_s(479), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(480)));
-    $properties.$put($rt_s(289), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(481)));
-    $properties.$put($rt_s(482), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(483)));
-    $properties.$put($rt_s(484), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(485)));
-    $properties.$put($rt_s(486), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(487)));
-    $command = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(488));
-    igiae_JsonSchema_setRequired($command, ju_Arrays_asList($rt_wrapArray(jl_String, [$rt_s(479), $rt_s(289)])));
+    $properties.$put($rt_s(478), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(479)));
+    $properties.$put($rt_s(289), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(480)));
+    $properties.$put($rt_s(481), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(482)));
+    $properties.$put($rt_s(483), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(484)));
+    $properties.$put($rt_s(485), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(486)));
+    $command = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(487));
+    igiae_JsonSchema_setRequired($command, ju_Arrays_asList($rt_wrapArray(jl_String, [$rt_s(478), $rt_s(289)])));
     igiae_JsonSchema_setProperties($command, $properties);
-    $commands = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(489));
+    $commands = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(488));
     igiae_JsonSchema_setItems($commands, $command);
     return $commands;
 },
 igiae_ManifestSchema_data = () => {
     let $paths, $properties, $data, var$4;
-    $paths = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(490));
+    $paths = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(489));
     igiae_JsonSchema_setItems($paths, igiae_JsonSchema_ofType($rt_s(272)));
     $properties = ju_LinkedHashMap__init_();
-    $properties.$put($rt_s(491), $paths);
-    $data = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(492));
+    $properties.$put($rt_s(490), $paths);
+    $data = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(491));
     var$4 = $rt_createArray(jl_String, 1);
-    var$4.data[0] = $rt_s(491);
+    var$4.data[0] = $rt_s(490);
     igiae_JsonSchema_setRequired($data, ju_Arrays_asList(var$4));
     igiae_JsonSchema_setProperties($data, $properties);
     return $data;
@@ -17760,11 +17745,11 @@ igiae_ManifestSchema_data = () => {
 igiae_ManifestSchema_config = () => {
     let $properties, $config, var$3;
     $properties = ju_LinkedHashMap__init_();
-    $properties.$put($rt_s(479), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(493)));
-    $properties.$put($rt_s(494), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(495)));
-    $config = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(496));
+    $properties.$put($rt_s(478), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(492)));
+    $properties.$put($rt_s(493), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(494)));
+    $config = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(495));
     var$3 = $rt_createArray(jl_String, 1);
-    var$3.data[0] = $rt_s(494);
+    var$3.data[0] = $rt_s(493);
     igiae_JsonSchema_setRequired($config, ju_Arrays_asList(var$3));
     igiae_JsonSchema_setProperties($config, $properties);
     return $config;
@@ -17772,67 +17757,67 @@ igiae_ManifestSchema_config = () => {
 igiae_ManifestSchema_lifecycle = () => {
     let $properties, $lifecycle;
     $properties = ju_LinkedHashMap__init_();
-    $properties.$put($rt_s(497), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(274)), $rt_s(498)));
-    $properties.$put($rt_s(499), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(274)), $rt_s(500)));
-    $lifecycle = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(501));
+    $properties.$put($rt_s(496), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(274)), $rt_s(497)));
+    $properties.$put($rt_s(498), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(274)), $rt_s(499)));
+    $lifecycle = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(500));
     igiae_JsonSchema_setProperties($lifecycle, $properties);
     return $lifecycle;
 },
 igiae_ManifestSchema_publish = () => {
     let $properties, $jarModule, $publish;
     $properties = ju_LinkedHashMap__init_();
-    $properties.$put($rt_s(502), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(274)), $rt_s(503)));
-    $jarModule = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(504));
+    $properties.$put($rt_s(501), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(274)), $rt_s(502)));
+    $jarModule = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(503));
     igiae_JsonSchema_setItems($jarModule, igiae_JsonSchema_ofType($rt_s(272)));
-    $properties.$put($rt_s(505), $jarModule);
-    $properties.$put($rt_s(506), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(274)), $rt_s(507)));
-    $properties.$put($rt_s(508), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(274)), $rt_s(509)));
-    $publish = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(510));
+    $properties.$put($rt_s(504), $jarModule);
+    $properties.$put($rt_s(505), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(274)), $rt_s(506)));
+    $properties.$put($rt_s(507), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(274)), $rt_s(508)));
+    $publish = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(509));
     igiae_JsonSchema_setProperties($publish, $properties);
     return $publish;
 },
 igiae_ManifestSchema_repo = () => {
     let $properties, $domains, $tech, $topics, $repo;
     $properties = ju_LinkedHashMap__init_();
-    $properties.$put($rt_s(511), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(512)));
-    $properties.$put($rt_s(513), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(514)));
-    $domains = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(515));
+    $properties.$put($rt_s(510), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(511)));
+    $properties.$put($rt_s(512), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(513)));
+    $domains = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(514));
     igiae_JsonSchema_setItems($domains, igiae_JsonSchema_ofType($rt_s(272)));
-    $properties.$put($rt_s(516), $domains);
-    $tech = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(517));
+    $properties.$put($rt_s(515), $domains);
+    $tech = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(516));
     igiae_JsonSchema_setItems($tech, igiae_JsonSchema_ofType($rt_s(272)));
-    $properties.$put($rt_s(518), $tech);
-    $topics = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(519));
+    $properties.$put($rt_s(517), $tech);
+    $topics = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(518));
     igiae_JsonSchema_setItems($topics, igiae_JsonSchema_ofType($rt_s(272)));
-    $properties.$put($rt_s(520), $topics);
-    $repo = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(521));
-    igiae_JsonSchema_setRequired($repo, ju_Arrays_asList($rt_wrapArray(jl_String, [$rt_s(511), $rt_s(513), $rt_s(518)])));
+    $properties.$put($rt_s(519), $topics);
+    $repo = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(520));
+    igiae_JsonSchema_setRequired($repo, ju_Arrays_asList($rt_wrapArray(jl_String, [$rt_s(510), $rt_s(512), $rt_s(517)])));
     igiae_JsonSchema_setProperties($repo, $properties);
     return $repo;
 },
 igiae_ManifestSchema_marketplace = () => {
     let $matchProperties, $topics, $match, $categoryProperties, $category, $categories, $properties, $marketplace, var$9;
     $matchProperties = ju_LinkedHashMap__init_();
-    $topics = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(522));
+    $topics = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(521));
     igiae_JsonSchema_setItems($topics, igiae_JsonSchema_ofType($rt_s(272)));
-    $matchProperties.$put($rt_s(520), $topics);
-    $matchProperties.$put($rt_s(523), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(524)));
-    $match = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(525));
+    $matchProperties.$put($rt_s(519), $topics);
+    $matchProperties.$put($rt_s(522), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(523)));
+    $match = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(524));
     igiae_JsonSchema_setProperties($match, $matchProperties);
     $categoryProperties = ju_LinkedHashMap__init_();
-    $categoryProperties.$put($rt_s(17), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(526)));
-    $categoryProperties.$put($rt_s(527), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(528)));
-    $categoryProperties.$put($rt_s(529), $match);
-    $category = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(530));
-    igiae_JsonSchema_setRequired($category, ju_Arrays_asList($rt_wrapArray(jl_String, [$rt_s(17), $rt_s(529)])));
+    $categoryProperties.$put($rt_s(17), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(525)));
+    $categoryProperties.$put($rt_s(526), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(527)));
+    $categoryProperties.$put($rt_s(528), $match);
+    $category = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(529));
+    igiae_JsonSchema_setRequired($category, ju_Arrays_asList($rt_wrapArray(jl_String, [$rt_s(17), $rt_s(528)])));
     igiae_JsonSchema_setProperties($category, $categoryProperties);
-    $categories = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(531));
+    $categories = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(530));
     igiae_JsonSchema_setItems($categories, $category);
     $properties = ju_LinkedHashMap__init_();
-    $properties.$put($rt_s(532), $categories);
-    $marketplace = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(533));
+    $properties.$put($rt_s(531), $categories);
+    $marketplace = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(532));
     var$9 = $rt_createArray(jl_String, 1);
-    var$9.data[0] = $rt_s(532);
+    var$9.data[0] = $rt_s(531);
     igiae_JsonSchema_setRequired($marketplace, ju_Arrays_asList(var$9));
     igiae_JsonSchema_setProperties($marketplace, $properties);
     return $marketplace;
@@ -17840,45 +17825,45 @@ igiae_ManifestSchema_marketplace = () => {
 igiae_ManifestSchema_app = () => {
     let $properties, $integration, $app;
     $properties = ju_LinkedHashMap__init_();
-    $properties.$put($rt_s(17), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(534)));
-    $properties.$put($rt_s(527), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(436)));
-    $properties.$put($rt_s(437), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(535)));
-    $properties.$put($rt_s(536), igiae_ManifestSchema_appHome());
-    $properties.$put($rt_s(537), igiae_ManifestSchema_appDetect());
-    $properties.$put($rt_s(538), igiae_ManifestSchema_appLoader());
-    $properties.$put($rt_s(539), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(540)));
-    $properties.$put($rt_s(491), igiae_ManifestSchema_appPathNames());
-    $properties.$put($rt_s(541), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(391)), $rt_s(542)));
-    $integration = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(543));
-    igiae_JsonSchema_setEnumValues($integration, ju_Arrays_asList($rt_wrapArray(jl_String, [$rt_s(544), $rt_s(545)])));
-    igiae_JsonSchema_setFix($integration, $rt_s(546));
-    $properties.$put($rt_s(547), $integration);
-    $properties.$put($rt_s(548), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(549)));
-    $properties.$put($rt_s(550), igiae_ManifestSchema_appUsage());
-    $properties.$put($rt_s(551), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(552)));
-    $properties.$put($rt_s(553), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(554)));
-    $properties.$put($rt_s(555), igiae_ManifestSchema_appNpmPlugins());
-    $properties.$put($rt_s(556), igiae_ManifestSchema_appStartupHook());
-    $properties.$put($rt_s(557), igiae_ManifestSchema_appDiscovery());
-    $properties.$put($rt_s(558), igiae_ManifestSchema_appProjects());
-    $properties.$put($rt_s(559), igiae_ManifestSchema_appModelCatalog());
-    $app = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(560));
-    igiae_JsonSchema_setRequired($app, ju_Arrays_asList($rt_wrapArray(jl_String, [$rt_s(17), $rt_s(527), $rt_s(536)])));
+    $properties.$put($rt_s(17), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(533)));
+    $properties.$put($rt_s(526), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(435)));
+    $properties.$put($rt_s(436), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(534)));
+    $properties.$put($rt_s(535), igiae_ManifestSchema_appHome());
+    $properties.$put($rt_s(536), igiae_ManifestSchema_appDetect());
+    $properties.$put($rt_s(537), igiae_ManifestSchema_appLoader());
+    $properties.$put($rt_s(538), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(539)));
+    $properties.$put($rt_s(490), igiae_ManifestSchema_appPathNames());
+    $properties.$put($rt_s(540), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(391)), $rt_s(541)));
+    $integration = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(542));
+    igiae_JsonSchema_setEnumValues($integration, ju_Arrays_asList($rt_wrapArray(jl_String, [$rt_s(543), $rt_s(544)])));
+    igiae_JsonSchema_setFix($integration, $rt_s(545));
+    $properties.$put($rt_s(546), $integration);
+    $properties.$put($rt_s(547), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(548)));
+    $properties.$put($rt_s(549), igiae_ManifestSchema_appUsage());
+    $properties.$put($rt_s(550), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(551)));
+    $properties.$put($rt_s(552), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(553)));
+    $properties.$put($rt_s(554), igiae_ManifestSchema_appNpmPlugins());
+    $properties.$put($rt_s(555), igiae_ManifestSchema_appStartupHook());
+    $properties.$put($rt_s(556), igiae_ManifestSchema_appDiscovery());
+    $properties.$put($rt_s(557), igiae_ManifestSchema_appProjects());
+    $properties.$put($rt_s(558), igiae_ManifestSchema_appModelCatalog());
+    $app = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(559));
+    igiae_JsonSchema_setRequired($app, ju_Arrays_asList($rt_wrapArray(jl_String, [$rt_s(17), $rt_s(526), $rt_s(535)])));
     igiae_JsonSchema_setProperties($app, $properties);
     return $app;
 },
 igiae_ManifestSchema_appHome = () => {
     let $properties, $candidates, $home, var$4;
     $properties = ju_LinkedHashMap__init_();
-    $properties.$put($rt_s(561), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(562)));
-    $properties.$put($rt_s(563), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(564)));
-    $properties.$put($rt_s(565), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(566)));
-    $candidates = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(567));
+    $properties.$put($rt_s(560), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(561)));
+    $properties.$put($rt_s(562), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(563)));
+    $properties.$put($rt_s(564), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(565)));
+    $candidates = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(566));
     igiae_JsonSchema_setItems($candidates, igiae_JsonSchema_ofType($rt_s(272)));
-    $properties.$put($rt_s(568), $candidates);
-    $home = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(569));
+    $properties.$put($rt_s(567), $candidates);
+    $home = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(568));
     var$4 = $rt_createArray(jl_String, 1);
-    var$4.data[0] = $rt_s(568);
+    var$4.data[0] = $rt_s(567);
     igiae_JsonSchema_setRequired($home, ju_Arrays_asList(var$4));
     igiae_JsonSchema_setProperties($home, $properties);
     return $home;
@@ -17886,42 +17871,42 @@ igiae_ManifestSchema_appHome = () => {
 igiae_ManifestSchema_appDetect = () => {
     let $properties, $detect;
     $properties = ju_LinkedHashMap__init_();
-    $properties.$put($rt_s(570), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(571)));
-    $properties.$put($rt_s(572), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(573)));
-    $detect = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(574));
+    $properties.$put($rt_s(569), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(570)));
+    $properties.$put($rt_s(571), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(572)));
+    $detect = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(573));
     igiae_JsonSchema_setProperties($detect, $properties);
     return $detect;
 },
 igiae_ManifestSchema_appLoader = () => {
     let $properties, $loader;
     $properties = ju_LinkedHashMap__init_();
-    $properties.$put($rt_s(17), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(575)));
-    $properties.$put($rt_s(576), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(577)));
-    $loader = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(578));
-    igiae_JsonSchema_setRequired($loader, ju_Arrays_asList($rt_wrapArray(jl_String, [$rt_s(17), $rt_s(576)])));
+    $properties.$put($rt_s(17), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(574)));
+    $properties.$put($rt_s(575), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(576)));
+    $loader = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(577));
+    igiae_JsonSchema_setRequired($loader, ju_Arrays_asList($rt_wrapArray(jl_String, [$rt_s(17), $rt_s(575)])));
     igiae_JsonSchema_setProperties($loader, $properties);
     return $loader;
 },
 igiae_ManifestSchema_appPathNames = () => {
     let $properties, $paths;
     $properties = ju_LinkedHashMap__init_();
-    $properties.$put($rt_s(579), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(580)));
-    $properties.$put($rt_s(581), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(582)));
-    $properties.$put($rt_s(583), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(584)));
-    $properties.$put($rt_s(446), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(585)));
-    $paths = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(586));
+    $properties.$put($rt_s(578), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(579)));
+    $properties.$put($rt_s(580), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(581)));
+    $properties.$put($rt_s(582), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(583)));
+    $properties.$put($rt_s(445), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(584)));
+    $paths = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(585));
     igiae_JsonSchema_setProperties($paths, $properties);
     return $paths;
 },
 igiae_ManifestSchema_appUsage = () => {
     let $properties, $formats, $usage, var$4;
     $properties = ju_LinkedHashMap__init_();
-    $formats = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(587));
+    $formats = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(586));
     igiae_JsonSchema_setItems($formats, igiae_JsonSchema_ofType($rt_s(272)));
-    $properties.$put($rt_s(588), $formats);
-    $usage = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(589));
+    $properties.$put($rt_s(587), $formats);
+    $usage = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(588));
     var$4 = $rt_createArray(jl_String, 1);
-    var$4.data[0] = $rt_s(588);
+    var$4.data[0] = $rt_s(587);
     igiae_JsonSchema_setRequired($usage, ju_Arrays_asList(var$4));
     igiae_JsonSchema_setProperties($usage, $properties);
     return $usage;
@@ -17929,63 +17914,63 @@ igiae_ManifestSchema_appUsage = () => {
 igiae_ManifestSchema_appNpmPlugins = () => {
     let $properties, $configFiles, $npmPlugins;
     $properties = ju_LinkedHashMap__init_();
-    $configFiles = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(590));
+    $configFiles = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(589));
     igiae_JsonSchema_setItems($configFiles, igiae_JsonSchema_ofType($rt_s(272)));
-    $properties.$put($rt_s(591), $configFiles);
-    $properties.$put($rt_s(592), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(593)));
-    $properties.$put($rt_s(594), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(595)));
-    $properties.$put($rt_s(596), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(597)));
-    $npmPlugins = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(598));
-    igiae_JsonSchema_setRequired($npmPlugins, ju_Arrays_asList($rt_wrapArray(jl_String, [$rt_s(591), $rt_s(592)])));
+    $properties.$put($rt_s(590), $configFiles);
+    $properties.$put($rt_s(591), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(592)));
+    $properties.$put($rt_s(593), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(594)));
+    $properties.$put($rt_s(595), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(596)));
+    $npmPlugins = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(597));
+    igiae_JsonSchema_setRequired($npmPlugins, ju_Arrays_asList($rt_wrapArray(jl_String, [$rt_s(590), $rt_s(591)])));
     igiae_JsonSchema_setProperties($npmPlugins, $properties);
     return $npmPlugins;
 },
 igiae_ManifestSchema_appStartupHook = () => {
     let $properties, $path, $startupHook;
     $properties = ju_LinkedHashMap__init_();
-    $properties.$put($rt_s(599), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(600)));
-    $path = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(601));
+    $properties.$put($rt_s(598), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(599)));
+    $path = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(600));
     igiae_JsonSchema_setItems($path, igiae_JsonSchema_ofType($rt_s(272)));
-    $properties.$put($rt_s(602), $path);
-    $properties.$put($rt_s(434), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(603)));
-    $startupHook = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(604));
-    igiae_JsonSchema_setRequired($startupHook, ju_Arrays_asList($rt_wrapArray(jl_String, [$rt_s(599), $rt_s(602), $rt_s(434)])));
+    $properties.$put($rt_s(601), $path);
+    $properties.$put($rt_s(433), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(602)));
+    $startupHook = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(603));
+    igiae_JsonSchema_setRequired($startupHook, ju_Arrays_asList($rt_wrapArray(jl_String, [$rt_s(598), $rt_s(601), $rt_s(433)])));
     igiae_JsonSchema_setProperties($startupHook, $properties);
     return $startupHook;
 },
 igiae_ManifestSchema_appDiscovery = () => {
     let $properties, $discovery;
     $properties = ju_LinkedHashMap__init_();
-    $properties.$put($rt_s(605), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(606)));
-    $properties.$put($rt_s(607), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(608)));
-    $properties.$put($rt_s(609), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(610)));
-    $discovery = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(611));
+    $properties.$put($rt_s(604), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(605)));
+    $properties.$put($rt_s(606), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(607)));
+    $properties.$put($rt_s(608), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(609)));
+    $discovery = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(610));
     igiae_JsonSchema_setProperties($discovery, $properties);
     return $discovery;
 },
 igiae_ManifestSchema_appProjects = () => {
     let $properties, $sessionDb, $projects;
     $properties = ju_LinkedHashMap__init_();
-    $properties.$put($rt_s(612), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(613)));
-    $sessionDb = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(614));
+    $properties.$put($rt_s(611), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(612)));
+    $sessionDb = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(613));
     igiae_JsonSchema_setItems($sessionDb, igiae_JsonSchema_ofType($rt_s(272)));
-    $properties.$put($rt_s(615), $sessionDb);
-    $properties.$put($rt_s(616), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(617)));
-    $projects = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(618));
+    $properties.$put($rt_s(614), $sessionDb);
+    $properties.$put($rt_s(615), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(616)));
+    $projects = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(617));
     igiae_JsonSchema_setProperties($projects, $properties);
     return $projects;
 },
 igiae_ManifestSchema_appModelCatalog = () => {
     let $properties, $files, $modelCatalog;
     $properties = ju_LinkedHashMap__init_();
-    $files = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(619));
+    $files = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(390)), $rt_s(618));
     igiae_JsonSchema_setItems($files, igiae_JsonSchema_ofType($rt_s(272)));
-    $properties.$put($rt_s(620), $files);
-    $properties.$put($rt_s(561), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(621)));
-    $properties.$put($rt_s(596), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(597)));
-    $properties.$put($rt_s(622), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(623)));
-    $modelCatalog = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(624));
-    igiae_JsonSchema_setRequired($modelCatalog, ju_Arrays_asList($rt_wrapArray(jl_String, [$rt_s(620), $rt_s(622)])));
+    $properties.$put($rt_s(619), $files);
+    $properties.$put($rt_s(560), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(620)));
+    $properties.$put($rt_s(595), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(596)));
+    $properties.$put($rt_s(621), igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(272)), $rt_s(622)));
+    $modelCatalog = igiae_ManifestSchema_described(igiae_JsonSchema_ofType($rt_s(338)), $rt_s(623));
+    igiae_JsonSchema_setRequired($modelCatalog, ju_Arrays_asList($rt_wrapArray(jl_String, [$rt_s(619), $rt_s(621)])));
     igiae_JsonSchema_setProperties($modelCatalog, $properties);
     return $modelCatalog;
 },
@@ -18686,9 +18671,9 @@ $rt_stringPool(["String is null", "String is empty", "String contains invalid di
 "then", "posFSet", "<MultiLine $>", "Patter is null", "\\Q", "\\E", "\\\\E\\Q", "ACTIVATING", "ACTIVE", "BROKEN", "STOPPED", "services", "provides", "consumes", "UCI sequence: ", "CompositeRangeSet:  <nonsurrogate> ", " <surrogate> ", "FinalSet", "<Empty set>", "the manifest", "(root)", "services.provides", "services.consumes", "(unknown plugin)", "plugin.json ", ":", "services.provides[", "]", "\"", "\" is neither namespaced by this plugin nor a well-known service id", "rename it to \"", "\", or use one of: ",
 "\" is listed twice", "remove the duplicate entry", "EOI", "object", "function", "undefined", "symbol", "bigint", "^", "\" is already registered by ", "disable one of the two plugins, or have each register its own namespaced id so consumers can ask for the one they want", "cannot register service \"", "\", which belongs to another plugin", "namespace it as \"", "\", or register one of the well-known ids: ", "a watcher of \"", "\" threw while handling ", "stopped while waiting for service \"", "provide \"", "\" before this plugin is stopped, or use get() and carry on without it",
 "PreviousMatch", "NonCapFSet", "Either src or dest is null", "timeoutMs", "is built for ", ", and this host hosts ", "install it in ", ", or add \"", "\" to \"targets\" in plugin.json", "needs api ", ", this host has api ", "update the app to a version that implements api ", " or later", "capabilities declared but never provided: ", "call ctx.provide(\"", "\", ...) in activate, or remove it from \"capabilities\" in plugin.json", "capabilities provided but never declared: ", "add \"", "\" to \"capabilities\" in plugin.json",
-"a late provision of capability", "capability", "provided capability \"", "\" twice", "call ctx.provide once per capability in activate", "ignored ", ", which is no longer running", "a late subscription to topic", "a late want of service", "a late watch of service", "a late registration of service", "DotAll", "decomposed Hangul syllable:", " (fix: ", ")", "WordBoundary", "array", "integer", "required field", "expected ", ", got ", "set ", " to ", " or ", "another shape", "a ", "an ", "required field \"", "\" is missing",
-"\" to ", "field", "expected at least ", " items, got ", "give ", " at least ", " items", " characters, got ", " characters", "\" does not match ", "make ", " match ", "\" is not one of ", " to one of ", "expected a value >= ", " to a value >= ", " to a ", "<SOL>", "<Unix MultiLine $>", "Name capturing group should start with letter", "Is", "In", "Pointer at the published manifest schema, for an editor\'s completion and validation.", "The plugin\'s permanent identity, matching its repository name.", "^[a-z0-9]+(-[a-z0-9]+)*$",
-"use lowercase words joined by single hyphens, for example \"config-ledger\"", "The lowest API major version this plugin needs. A floor, not a build tag.", "set \"api\" to the lowest API major version this plugin needs, for example 1", "The built module a host imports. Required once capabilities are declared.", "^(?![\\\\/])(?![A-Za-z]:)(?!(?:.*[\\\\/])?\\.\\.(?:[\\\\/]|$))", "point \"entry\" at the built module a host imports, inside the repo, for example \"dist/index.js\", with no leading slash, drive letter or ..",
+"a late provision of capability", "capability", "provided capability \"", "\" twice", "call ctx.provide once per capability in activate", "ignored ", ", which is no longer running", "a late subscription to topic", "a late want of service", "a late watch of service", "a late registration of service", "DotAll", "decomposed Hangul syllable:", " (fix: ", ")", "WordBoundary", "array", "integer", "expected ", ", got ", "set ", " to ", " or ", "another shape", "a ", "an ", "required field \"", "\" is missing", "\" to ",
+"field", "expected at least ", " items, got ", "give ", " at least ", " items", " characters, got ", " characters", "\" does not match ", "make ", " match ", "\" is not one of ", " to one of ", "expected a value >= ", " to a value >= ", " to a ", "<SOL>", "<Unix MultiLine $>", "Name capturing group should start with letter", "Is", "In", "Pointer at the published manifest schema, for an editor\'s completion and validation.", "The plugin\'s permanent identity, matching its repository name.", "^[a-z0-9]+(-[a-z0-9]+)*$",
+"use lowercase words joined by single hyphens, for example \"config-ledger\"", "The lowest API major version this plugin needs. A floor, not a build tag.", "set \"api\" to the lowest API major version this plugin needs, for example 1", "The built module a host imports. Required once capabilities are declared.", "^(?![\\\\/])(?![A-Za-z]:)(?![\\s\\S]*[\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029])(?!(?:[\\s\\S]*[\\\\/])?\\.\\.(?:[\\\\/]|(?![\\s\\S])))", "point \"entry\" at the built module a host imports, inside the repo, for example \"dist/index.js\", with no leading slash, drive letter, control character or ..",
 "entry", "displayName", "The name a surface shows instead of the id.", "icon", "Path to a square-viewBox SVG mark, relative to the repo root.", "Further marks this repo ships, each keyed by the id of the thing it belongs to.", "icons", "Host-facing abilities this plugin provides at activation.", "list capability ids as strings, for example [\"provider\", \"screens\"]", "The spisor applications this artifact is for. Absent means every application.", "list the application ids this is built for, for example [\"forebay\"], or remove \"targets\" to mean every application",
 "commands", "config", "data", "Declared permissions, surfaced at install and in dashboards.", "lifecycle", "publish", "repo", "marketplace", "The single machine-readable description of a plugin, whichever application it targets.", "http://json-schema.org/draft-07/schema#", "https://weivel.github.io/model/plugin.schema.json", "weivel plugin manifest", "capabilities are declared, so add \"entry\" naming the module that provides them, for example \"dist/index.js\"", "Service ids this plugin registers, each namespaced by its own id or a well-known bare id.",
 "write the service id as a string, for example \"identity:accounts\", or an object carrying \"id\" and \"attributes\"", "list service ids as strings, for example [\"identity:accounts\"], or objects carrying \"id\" and \"attributes\"", "Service ids this plugin asks for. A bare string asks for it optionally, which is what every manifest written before this object form meant.", "write the service id as a string, for example \"accounts\", or an object carrying \"id\" and what its absence costs", "list service ids as strings, for example [\"accounts\"], or objects carrying \"id\" and what its absence costs",
